@@ -1,0 +1,3631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Raj Enterprise - Stock & Sales Management</title>
+  <!-- PWA Setup -->
+  <meta name="theme-color" content="#3498db">
+
+  <!-- Firebase v9 Compat CDN - GUARANTEED TO WORK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin:0; padding:0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+    :root{
+      --primary:#2c3e50; --secondary:#3498db; --accent:#e74c3c;
+      --light:#ecf0f1; --dark:#2c3e50; --success:#2ecc71; --warning:#f39c12;
+      --danger:#e74c3c; --shadow: 0 4px 6px rgba(0,0,0,0.1); --offline:#7f8c8d; --online:#2ecc71;
+    }
+    body{ background-color:#000000; color:#333; min-height:100vh; padding-bottom:60px; }
+    .container{ max-width:1200px; margin:20px auto; padding:15px; }
+    header{ background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:15px 20px; border-radius:10px; margin-bottom:20px; box-shadow:var(--shadow); display:flex; gap:10px; align-items:center; justify-content:space-between; position:relative;}
+    .app-title{ font-size:22px; font-weight:700; }
+    .connection-status{ font-size:12px; display:flex; gap:8px; align-items:center;}
+    .status-indicator{ width:10px;height:10px;border-radius:50%; display:inline-block; }
+    .online .status-indicator{ background:var(--online); }
+    .offline .status-indicator{ background:var(--offline); }
+    .current-date{ font-size:13px; opacity:0.95; }
+    .nav-tabs{ display:flex; background:#686868; border-radius:10px; overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow); }
+    .tab{ flex:1; text-align:center; padding:12px; cursor:pointer; font-weight:500; transition:all .2s; }
+    .tab.active{ background:var(--secondary); color:#fff; }
+    .content-section{ display:none; background:#686868; border-radius:10px; padding:20px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .content-section.active{ display:block; }
+    .section-title{ font-size:20px; margin-bottom:15px; color:var(--primary); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .card{ background:#000000; border-radius:10px; padding:18px; margin-bottom:18px; box-shadow:var(--shadow); }
+    .stats-container{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:12px; }
+    .stat-card{ background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; border-radius:10px; padding:14px; text-align:center; box-shadow:var(--shadow); }
+    .stat-label{ font-size:13px; opacity:0.95; }
+    .stat-value{ font-size:22px; font-weight:700; margin-top:8px; }
+    label{ display:block; margin-bottom:6px; font-weight:500; }
+    input, select, textarea{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; }
+    .form-group{ margin-bottom:12px; }
+    .btn{ padding:10px 14px; border:none; border-radius:8px; cursor:pointer; font-weight:600; transition: all 0.2s ease; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .btn-primary{ background:var(--secondary); color:#fff; }
+    .btn-danger{ background:var(--danger); color:#fff; }
+    .btn-success{ background:var(--success); color:#fff; }
+    .btn-warning{ background:var(--warning); color:#fff; }
+    table{ width:100%; border-collapse:collapse; margin-top:8px; }
+    th,td{ padding:10px 12px; border-bottom:1px solid #eee; text-align:left; font-size:14px; }
+    th{ background:#f8f9fa; font-weight:600; }
+    .action-buttons button{ margin-right:6px; }
+    .search-box{ position:relative; }
+    .autocomplete-items{ position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid #ddd; border-top:none; z-index:99; max-height:200px; overflow:auto; border-radius:0 0 8px 8px; }
+    .autocomplete-item{ padding:8px 10px; cursor:pointer; border-bottom:1px solid #eee; }
+    .autocomplete-item:hover{ background:#f0f0f0; }
+    .notification{ position:fixed; top:20px; right:20px; padding:12px 14px; border-radius:8px; color:#fff; background:var(--success); box-shadow:var(--shadow); z-index:2000; display:none; }
+    .modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; justify-content:center; align-items:center; padding:20px; }
+    .modal-content{ background:#fff; padding:16px; border-radius:10px; width:100%; max-width:720px; box-shadow:var(--shadow); }
+    .close-modal{ font-size:22px; cursor:pointer; }
+    .footer{ text-align:center; padding:12px; margin-top:10px; color:#7f8c8d; font-size:13px; }
+    .small{ font-size:13px; color:#555; }
+    .muted{ color:#7f8c8d; font-size:13px; }
+    .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tab-loading { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-left: 8px; }
+    .input-error { border-color: var(--danger) !important; }
+    .error-text { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
+    .data-persistence { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 10px; }
+    .last-saved { color: var(--success); }
+    @media (max-width:768px){ .nav-tabs{ flex-direction:column; } .stats-container{ grid-template-columns:1fr; } }
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+        margin: 10px auto;
+      }
+      
+      header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+      }
+      
+      .nav-tabs {
+        flex-direction: column;
+      }
+      
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+      
+      .card {
+        padding: 15px;
+      }
+      
+      table {
+        font-size: 12px;
+      }
+      
+      th, td {
+        padding: 8px 6px;
+      }
+      
+      .btn {
+        padding: 12px;
+        font-size: 14px;
+      }
+      
+      .section-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+    }
+
+    /* Make buttons easier to tap on mobile */
+    .btn, .tab {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* PWA Fullscreen App Styles */
+    @media (display-mode: standalone) {
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      
+      header {
+        border-radius: 0;
+        margin-bottom: 0;
+      }
+      
+      .container {
+        margin: 0 auto;
+        padding: 0;
+      }
+    }
+
+    /* Mobile app-like styling */
+    .standalone-app {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .standalone-app .container {
+      max-width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* New styles for multi-item bill */
+    .bill-item {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #eee;
+    }
+    
+    .bill-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .bill-item-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    .remove-item {
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+    }
+    
+    #current-bill-items {
+      margin: 15px 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .bill-total {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 2px solid #eee;
+      text-align: right;
+    }
+    
+    .bill-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    /* New styles for restock history */
+    .restock-item {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #eee;
+    }
+    
+    .restock-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .restock-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    /* Tabs for reports section */
+    .report-tabs {
+      display: flex;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    
+    .report-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all .2s;
+    }
+    
+    .report-tab.active {
+      background: var(--secondary);
+      color: #fff;
+    }
+    
+    .report-content {
+      display: none;
+    }
+    
+    .report-content.active {
+      display: block;
+    }
+    
+    /* Autocomplete active item */
+    .autocomplete-active {
+      background-color: var(--secondary) !important;
+      color: white;
+    }
+
+    #autocomplete-list-stock {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-top: none;
+      z-index: 99;
+      max-height: 200px;
+      overflow: auto;
+      border-radius: 0 0 8px 8px;
+    }
+  
+    /* Enhanced Firebase Auth CSS */
+    .firebase-auth { display: flex; gap: 6px; align-items: center; font-size: 11px; }
+    .firebase-user { color: #ecf0f1; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .firebase-btn { padding: 3px 6px; border: none; border-radius: 3px; font-size: 9px; cursor: pointer; font-weight: 500; }
+    .firebase-btn.signin { background: #27ae60; color: white; }
+    .firebase-btn.signout { background: #e74c3c; color: white; }
+    .firebase-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 10000; }
+    .firebase-modal.active { display: flex; }
+    .firebase-form { background: white; padding: 20px; border-radius: 8px; max-width: 350px; width: 90%; }
+    .firebase-status { margin-top: 8px; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center; }
+    .firebase-status.success { background: #d4edda; color: #155724; }
+    .firebase-status.error { background: #f8d7da; color: #721c24; }
+    .firebase-status.info { background: #d1ecf1; color: #0c5460; }
+    .header-flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+  <script type="text/javascript">
+    // Single Page Apps for GitHub Pages
+    // MIT License
+    // https://github.com/rafgraph/spa-github-pages
+    // This script checks to see if a redirect is present in the query string,
+    // converts it back into the correct url and adds it to the
+    // browser's history using window.history.replaceState(...),
+    // which won't cause the browser to attempt to load the new url.
+    // When the single page app is loaded further down in this file,
+    // the correct url will be waiting in the browser's history for
+    // the single page app to route accordingly.
+    (function(l) {
+        if (l.search === '/' ) {
+            var decoded = l.search.slice(1).split('&').map(function(s) { 
+                return s.replace(/~and~/g, '&')
+            }).join('?');
+            window.history.replaceState(null, null,
+                l.pathname.slice(0, -1) + decoded + l.hash
+            );
+        }
+    }(window.location))
+  </script>
+
+
+  <script type="text/javascript">
+      (function(l) {
+          if (l.search[1] === '/' ) {
+              var decoded = l.search.slice(1).split('&').map(function(s) { 
+                  return s.replace(/~and~/g, '&')
+              }).join('?');
+              window.history.replaceState(null, null,
+                  l.pathname.slice(0, -1) + decoded + l.hash
+              );
+          }
+      }(window.location))
+  </script>
+
+  <!-- FIXED Firebase Configuration with Global Variables -->
+  <script>
+    console.log('🔥 Starting Firebase initialization...');
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAOW9WOH4i6_T29Kfz0fEW-HIr0Fih_yjU",
+      authDomain: "raj-enterprises-4a9b1.firebaseapp.com",
+      projectId: "raj-enterprises-4a9b1",
+      storageBucket: "raj-enterprises-4a9b1.firebasestorage.app",
+      messagingSenderId: "1085563539961",
+      appId: "1:1085563539961:web:2043adf90fe116f055ad28"
+    };
+
+    // Initialize Firebase and CREATE GLOBAL VARIABLES
+    firebase.initializeApp(firebaseConfig);
+
+    // CRITICAL FIX: Define these as GLOBAL WINDOW variables
+    window.firebaseAuth = firebase.auth();
+    window.firebaseDb = firebase.firestore();
+    window.currentUser = null;
+    window.unsubscribes = [];
+
+    // Also create regular variables for easier access
+    const firebaseAuth = window.firebaseAuth;
+    const firebaseDb = window.firebaseDb;
+
+    console.log('✅ Firebase initialized with global variables');
+    console.log('✅ firebaseAuth:', typeof firebaseAuth);
+    console.log('✅ firebaseDb:', typeof firebaseDb);
+
+    // Enable offline persistence
+    firebaseDb.enablePersistence({ synchronizeTabs: true })
+      .then(() => {
+        console.log('✅ Firestore persistence enabled');
+      })
+      .catch((err) => {
+        console.log('⚠️ Persistence info:', err.code);
+      });
+  </script>
+
+
+  <div class="container">
+    <!-- Firebase Authentication Modal -->
+    <div class="firebase-modal" id="firebase-modal">
+      <div class="firebase-form">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h4 style="margin: 0;">🔐 Firebase Auth</h4>
+          <span onclick="toggleFirebaseModal(false)" style="font-size: 20px; cursor: pointer; color: #999;">&times;</span>
+        </div>
+        <form id="firebase-form">
+          <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="fb-email" class="form-control" required placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="fb-password" class="form-control" required placeholder="Min 6 characters">
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Sign In</button>
+            <button type="button" onclick="signUpUser()" class="btn btn-success" style="flex: 1;">Sign Up</button>
+          </div>
+          <div id="firebase-status" class="firebase-status" style="display: none;"></div>
+        </form>
+      </div>
+    </div>
+
+    <header>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div class="app-title">📦 Raj Enterprise</div>
+        <div class="muted small">Stock & Sales Manager Ph.No.: 6.386620244e+09</div>
+      </div>
+
+      <div class="header-flex">
+        <div class="firebase-auth">
+          <button class="firebase-btn signin" id="fb-signin" onclick="toggleFirebaseModal(true)" style="display:none;">🔐 Sign In</button>
+          <button class="firebase-btn signout" id="fb-signout" onclick="signOutUser()" style="display:none;">👋 Sign Out</button>
+          <span class="firebase-user" id="fb-user"></span>
+        </div>
+        <div class="current-date" id="header-date">Oct 06, 2025</div>
+        <div class="connection-status" id="connection">
+          <span class="status-indicator"></span><span id="conn-text">Checking...</span>
+        </div>
+      </div>
+    </header>
+
+<div class="nav-tabs" role="tablist">
+      <div class="tab active" data-target="dashboard">
+        Dashboard <span class="tab-loading" id="dashboard-loading" style="display: none;"></span>
+      </div>
+      <div class="tab" data-target="sales">
+        Sales <span class="tab-loading" id="sales-loading" style="display: none;"></span>
+      </div>
+      <div class="tab" data-target="stock">
+        Stock <span class="tab-loading" id="stock-loading" style="display: none;"></span>
+      </div>
+      <div class="tab" data-target="reports">
+        Reports <span class="tab-loading" id="reports-loading" style="display: none;"></span>
+      </div>
+      <div class="tab" data-target="add-product">
+        Add Product <span class="tab-loading" id="add-product-loading" style="display: none;"></span>
+      </div>
+      <div class="tab" data-target="backup">
+        Backup <span class="tab-loading" id="backup-loading" style="display: none;"></span>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="content-section active" id="dashboard">
+      <div class="section-title">
+        <span>Dashboard</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-primary" id="sync-button"><i class="fas fa-sync"></i> Sync (export)</button>
+          <button class="btn btn-warning" id="manual-sync" style="display: none;">
+            <i class="fas fa-sync"></i> Sync Pending Changes
+          </button>
+          <button class="btn btn-warning" id="import-paste-btn"><i class="fas fa-upload"></i> Import</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stats-container">
+          <div class="stat-card">
+            <div class="stat-label">Running Average Sale</div>
+            <div class="stat-value" id="running-average">₹0.00</div>
+            <div class="stat-desc small">Daily Average</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Monthly Sales</div>
+            <div class="stat-value" id="monthly-sales">₹0.00</div>
+            <div class="stat-desc small">This month</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Monthly Profit</div>
+            <div class="stat-value" id="monthly-profit">₹0.00</div>
+            <div class="stat-desc small">This month</div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px;">
+          <h3 style="margin-bottom:8px;">Today's Report</h3>
+          <div class="stats-container">
+            <div class="stat-card">
+              <div class="stat-label">Today's Sales</div>
+              <div class="stat-value" id="today-sales-value">₹0.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Today's Profit</div>
+              <div class="stat-value" id="today-profit-value">₹0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:6px;">
+          <h3>Low Stock Alert</h3>
+          <!-- NEW: Search bar for low stock alerts -->
+          <div class="search-box" style="margin-bottom:10px;">
+            <input type="text" id="low-stock-search" placeholder="Search low stock products...">
+          </div>
+          <table>
+            <thead><tr><th>Product</th><th>Qty</th><th>Action</th></tr></thead>
+            <tbody id="low-stock-alerts"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales -->
+    <div class="content-section" id="sales">
+      <div class="section-title"><span>Record Sale</span><span class="small muted">Edit or remove sales from the list below</span></div>
+
+      <div class="card">
+        <form id="sale-form">
+          <!-- Customer Information Section -->
+          <div style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+            <h3 style="margin-bottom: 12px;">Customer Information</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label for="customer-name">Customer Name</label>
+                <input type="text" id="customer-name" placeholder="Enter customer name">
+              </div>
+              <div class="form-group">
+                <label for="customer-phone">Phone Number</label>
+                <input type="text" id="customer-phone" placeholder="Enter phone number">
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label for="customer-address">Address (Optional)</label>
+                <textarea id="customer-address" placeholder="Enter customer address" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Product Information Section -->
+          <h3 style="margin-bottom: 12px;">Product Information</h3>
+          <div class="form-group">
+            <label for="product-search">Search Product</label>
+            <div class="search-box">
+              <input type="text" id="product-search" placeholder="Start typing product name...">
+              <div class="autocomplete-items" id="autocomplete-list" style="display:none;"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="sale-quantity">Quantity</label>
+            <input type="number" id="sale-quantity" min="0.01" step="0.01" value="1">
+            <div class="error-text" id="quantity-error">Please enter a valid quantity</div>
+          </div>
+
+          <div class="form-group">
+            <label for="sale-price">Selling Price (₹) — per unit</label>
+            <input type="number" id="sale-price" step="0.01" placeholder="Enter selling price">
+            <div class="error-text" id="price-error">Please enter a valid price</div>
+          </div>
+
+          <input type="hidden" id="sale-product-id">
+          <div class="bill-actions">
+            <button type="button" id="add-to-bill" class="btn btn-primary">Add to Bill</button>
+            <button type="button" id="generate-bill-btn" class="btn btn-warning" disabled>Generate Bill</button>
+            <button type="submit" class="btn btn-success">Record Sale</button>
+          </div>
+        </form>
+
+        <!-- Current Bill Items -->
+        <div id="current-bill-items" style="display: none;">
+          <h3 style="margin: 15px 0 10px 0;">Current Bill Items</h3>
+          <div id="bill-items-container">
+            <!-- Bill items will be added here dynamically -->
+          </div>
+          <div class="bill-total" id="bill-total">
+            Total: ₹0.00
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Today's Sales</h3>
+        <table>
+          <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Time</th><th>Actions</th></tr></thead>
+          <tbody id="today-sales"><tr><td colspan="6" style="text-align:center;">No sales recorded today</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>All Sales History</h3>
+        <div style="margin-bottom: 15px;">
+          <button class="btn btn-primary" id="generate-bill-from-sale">
+            <i class="fas fa-receipt"></i> Generate Bill for Selected Sale
+          </button>
+        </div>
+        <table>
+          <thead><tr><th>Select</th><th>Date</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th><th>Actions</th></tr></thead>
+          <tbody id="all-sales-history"><tr><td colspan="7" style="text-align:center;">No sales yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Stock -->
+    <div class="content-section" id="stock">
+      <div class="section-title"><span>Current Stock</span><span class="small muted">Add, edit or remove products</span></div>
+
+      <div class="card">
+        <div class="stat-card" style="display:inline-block;">
+          <div class="stat-label">Total Stock Value</div>
+          <div class="stat-value" id="total-stock-value">₹0.00</div>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom: 12px;">Search Product</h3>
+          <div class="form-group">
+        <div class="search-box" style="margin-bottom:10px;">
+          <input type="text" id="stock-search" placeholder="Search products...">
+          <div class="autocomplete-items" id="autocomplete-list" style="display:none;"></div>
+        </div>
+
+        <table>
+          <thead><tr><th>ID</th><th>Product Name</th><th>Quantity</th><th>Cost Price</th><th>MRP</th><th>Actions</th></tr></thead>
+          <tbody id="stock-table"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Reports -->
+    <div class="content-section" id="reports">
+      <div class="section-title"><span>Sales Reports</span><span class="small muted">Generate totals by date range</span></div>
+
+      <!-- NEW: Report Tabs -->
+      <div class="report-tabs">
+        <div class="report-tab active" data-target="sales-report">Sales Report</div>
+        <div class="report-tab" data-target="restock-report">Restock History</div>
+      </div>
+
+      <div class="report-content active" id="sales-report">
+        <div class="card">
+          <div class="date-filter" style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1;">
+              <label for="report-from">From</label>
+              <input type="date" id="report-from">
+            </div>
+            <div style="flex:1;">
+              <label for="report-to">To</label>
+              <input type="date" id="report-to">
+            </div>
+            <div style="align-self:end;">
+              <button class="btn btn-primary" id="generate-report">Generate Report</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="stats-container">
+              <div class="stat-card">
+                <div class="stat-label">Total Sales</div>
+                <div class="stat-value" id="report-total-sales">₹0.00</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Total Profit</div>
+                <div class="stat-value" id="report-total-profit">₹0.00</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Items Sold</div>
+                <div class="stat-value" id="report-items-sold">0</div>
+              </div>
+            </div>
+
+            <h3>Sales History (Filtered)</h3>
+            <table>
+              <thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th></tr></thead>
+              <tbody id="sales-history"><tr><td colspan="5" style="text-align:center;">No sales data available</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: Restock History Report -->
+      <div class="report-content" id="restock-report">
+        <div class="card">
+          <div class="date-filter" style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1;">
+              <label for="restock-from">From</label>
+              <input type="date" id="restock-from">
+            </div>
+            <div style="flex:1;">
+              <label for="restock-to">To</label>
+              <input type="date" id="restock-to">
+            </div>
+            <div style="align-self:end;">
+              <button class="btn btn-primary" id="generate-restock-report">Generate Report</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <h3>Restock History</h3>
+            <div id="restock-history">
+              <div class="restock-item">
+                <div class="restock-header">
+                  <strong>Product Name</strong>
+                  <span class="small">Date: 01 Sep 2023</span>
+                </div>
+                <div class="restock-details">
+                  <div>Quantity Added: <strong>50</strong></div>
+                  <div>Cost Price: <strong>₹100.00</strong></div>
+                  <div>MRP: <strong>₹150.00</strong></div>
+                  <div>Previous Stock: <strong>10</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Restock Modal -->
+    <div class="modal" id="edit-restock-modal" aria-hidden="true">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>Edit Restock Record</h3>
+          <span class="close-modal" id="close-edit-restock">&times;</span>
+        </div>
+        <form id="edit-restock-form">
+          <input type="hidden" id="edit-restock-id">
+          <div class="form-group">
+            <label for="edit-restock-product">Product Name</label>
+            <input type="text" id="edit-restock-product" readonly>
+          </div>
+          <div class="form-group">
+            <label for="edit-restock-previous">Previous Quantity</label>
+            <input type="number" id="edit-restock-previous" readonly>
+          </div>
+          <div class="form-group">
+            <label for="edit-restock-quantity">Quantity Added</label>
+            <input type="number" id="edit-restock-quantity" min="1" step="1" required>
+            <div class="error-text" id="edit-restock-quantity-error">Please enter a valid quantity</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-restock-cost">Cost Price (₹)</label>
+            <input type="number" id="edit-restock-cost" step="0.01" required>
+            <div class="error-text" id="edit-restock-cost-error">Please enter a valid cost price</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-restock-mrp">MRP (₹)</label>
+            <input type="number" id="edit-restock-mrp" step="0.01" required>
+            <div class="error-text" id="edit-restock-mrp-error">Please enter a valid MRP</div>
+          </div>
+          <button type="submit" class="btn btn-success">Update Restock</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Product -->
+    <div class="content-section" id="add-product">
+      <div class="section-title"><span>Add New Product</span></div>
+
+      <div class="card">
+        <form id="product-form">
+          <div class="form-group">
+            <label for="product-name">Product Name</label>
+            <input type="text" id="product-name" required placeholder="Enter product name">
+            <div class="error-text" id="name-error">Please enter a product name</div>
+          </div>
+          <div class="form-group">
+            <label for="product-quantity">Initial Quantity</label>
+            <input type="number" id="product-quantity" min="0" step="0.01" value="0">
+            <div class="error-text" id="init-qty-error">Please enter a valid quantity</div>
+          </div>
+          <div class="form-group">
+            <label for="product-cost">Cost Price (₹)</label>
+            <input type="number" id="product-cost" step="0.01" value="0">
+            <div class="error-text" id="cost-error">Please enter a valid cost price</div>
+          </div>
+          <div class="form-group">
+            <label for="product-mrp">MRP (₹)</label>
+            <input type="number" id="product-mrp" step="0.01" value="0">
+            <div class="error-text" id="mrp-error">Please enter a valid MRP</div>
+          </div>
+          <div class="form-group">
+            <label for="product-tax">Tax (%)</label>
+            <input type="number" id="product-tax" min="0" max="100" step="0.1" value="0">
+            <div class="error-text" id="tax-error">Please enter a valid tax percentage</div>
+          </div>
+
+          <button type="submit" class="btn btn-success">Add Product</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Backup / Import -->
+    <div class="content-section" id="backup">
+      <div class="section-title"><span>Backup & Restore</span></div>
+
+      <div class="card">
+        <p class="small">You can export full DB (products + sales + settings) as a JSON file, re-import it to restore, or save to local disk (File System API when supported).</p>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="export-json" class="btn btn-primary"><i class="fas fa-file-export"></i> Download Backup (JSON)</button>
+          <button id="save-disk" class="btn btn-primary"><i class="fas fa-save"></i> Save Backup to Disk</button>
+          <label class="btn btn-warning" style="display:inline-block; cursor:pointer;">
+            <i class="fas fa-file-import"></i> Import Backup
+            <input type="file" id="file-input" accept="application/json" style="display:none;">
+          </label>
+
+          <button id="clear-db" class="btn btn-danger"><i class="fas fa-trash"></i> Clear Local DB</button>
+        </div>
+
+        <div class="data-persistence">
+          <i class="fas fa-database"></i>
+          <span>Data is stored locally in your browser</span>
+          <span class="last-saved" id="last-saved">Last saved: Just now</span>
+        </div>
+        <div class="offline-notice small" style="color: var(--warning); display: none;" id="offline-notice">
+          <i class="fas fa-wifi"></i> Offline mode - changes will sync when connected
+        </div>
+
+        <hr style="margin:12px 0;">
+        <div>
+          <h4>Cloud sync / integration notes</h4>
+          <p class="small muted">For direct Google Drive / Firebase sync you'll need to create OAuth credentials (client ID) and call the Drive/Firebase REST SDK. I can produce exact code to integrate once you provide client settings (or I can guide step-by-step).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit product modal -->
+    <div class="modal" id="edit-product-modal" aria-hidden="true">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>Edit Product</h3>
+          <span class="close-modal" id="close-edit-product">&times;</span>
+        </div>
+        <form id="edit-product-form">
+          <input type="hidden" id="edit-product-id">
+          <div class="form-group">
+            <label for="edit-product-name">Product Name</label>
+            <input type="text" id="edit-product-name" required>
+            <div class="error-text" id="edit-name-error">Please enter a product name</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-product-quantity">Quantity</label>
+            <input type="number" id="edit-product-quantity" min="0" step="0.01" required>
+            <div class="error-text" id="edit-qty-error">Please enter a valid quantity</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-product-cost">Cost Price (₹)</label>
+            <input type="number" id="edit-product-cost" step="0.01" required>
+            <div class="error-text" id="edit-cost-error">Please enter a valid cost price</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-product-mrp">MRP (₹)</label>
+            <input type="number" id="edit-product-mrp" step="0.01" required>
+            <div class="error-text" id="edit-mrp-error">Please enter a valid MRP</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-product-tax">Tax (%)</label>
+            <input type="number" id="edit-product-tax" min="0" max="100" step="0.1">
+            <div class="error-text" id="edit-tax-error">Please enter a valid tax percentage</div>
+          </div>
+          <button type="submit" class="btn btn-success">Update Product</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- NEW: Restock Modal -->
+    <div class="modal" id="restock-modal" aria-hidden="true">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>Restock Product</h3>
+          <span class="close-modal" id="close-restock">&times;</span>
+        </div>
+        <form id="restock-form">
+          <input type="hidden" id="restock-product-id">
+          <div class="form-group">
+            <label for="restock-product-name">Product Name</label>
+            <input type="text" id="restock-product-name" readonly>
+          </div>
+          <div class="form-group">
+            <label for="restock-current-quantity">Current Quantity</label>
+            <input type="number" id="restock-current-quantity" readonly>
+          </div>
+          <div class="form-group">
+            <label for="restock-quantity">Quantity to Add</label>
+            <input type="number" id="restock-quantity" min="1" step="1" value="0" required>
+            <div class="error-text" id="restock-quantity-error">Please enter a valid quantity</div>
+          </div>
+          <div class="form-group">
+            <label for="restock-cost">Cost Price (₹)</label>
+            <input type="number" id="restock-cost" step="0.01" required>
+            <div class="error-text" id="restock-cost-error">Please enter a valid cost price</div>
+          </div>
+          <div class="form-group">
+            <label for="restock-mrp">MRP (₹)</label>
+            <input type="number" id="restock-mrp" step="0.01" required>
+            <div class="error-text" id="restock-mrp-error">Please enter a valid MRP</div>
+          </div>
+          <button type="submit" class="btn btn-success">Update Stock</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Bill Modal -->
+    <div class="modal" id="bill-modal" aria-hidden="true">
+      <div class="modal-content" style="max-width:800px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3>Bill Rececept</h3>
+          <span class="close-modal" id="close-bill">&times;</span>
+        </div>
+        <div id="bill-content" style="background:white; padding:20px; border-radius:8px;">
+          <!-- Bill content will be inserted here by JavaScript -->
+        </div>
+        <div style="margin-top:20px; text-align:center;">
+          <button class="btn btn-primary" id="print-bill-btn">
+            <i class="fas fa-print"></i> Print Bill
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Select Sales for Bill Modal -->
+    <div class="modal" id="select-sales-modal" aria-hidden="true">
+      <div class="modal-content" style="max-width:800px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3>Select Sales for Bill</h3>
+          <span class="close-modal" id="close-select-sales">&times;</span>
+        </div>
+        <div style="max-height:400px; overflow-y:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Select</th>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody id="select-sales-table">
+              <!-- Sales will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:20px; text-align:center;">
+          <button class="btn btn-primary" id="generate-bill-from-selected">
+            Generate Bill for Selected Items
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Sale Modal (NEW) -->
+    <div class="modal" id="edit-sale-modal" aria-hidden="true">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>Edit Sale</h3>
+          <span class="close-modal" id="close-edit-sale">&times;</span>
+        </div>
+        <form id="edit-sale-form">
+          <input type="hidden" id="edit-sale-id">
+          <div class="form-group">
+            <label for="edit-sale-product">Product</label>
+            <input type="text" id="edit-sale-product" readonly>
+          </div>
+          <div class="form-group">
+            <label for="edit-sale-quantity">Quantity</label>
+            <input type="number" id="edit-sale-quantity" min="0.01" step="0.01" required>
+            <div class="error-text" id="edit-sale-qty-error">Please enter a valid quantity</div>
+          </div>
+          <div class="form-group">
+            <label for="edit-sale-price">Price (₹)</label>
+            <input type="number" id="edit-sale-price" step="0.01" required>
+            <div class="error-text" id="edit-sale-price-error">Please enter a valid price</div>
+          </div>
+          <button type="submit" class="btn btn-success">Update Sale</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="notification" id="notification">Notification</div>
+
+    <div class="footer">Raj Enterprise Stock & Sales Management no.->6386620244 System © 2025</div>
+  </div>
+
+  <script>
+  // ========== IndexedDB Setup ==========
+  const DB_NAME = 'RajEnterpriseDB';
+  const DB_VERSION = 3;
+  let db = null;
+
+  function openDB(){
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = (e) => reject(e.target.error);
+      request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains('products')) {
+          const products = db.createObjectStore('products', { keyPath:'id', autoIncrement:true });
+          products.createIndex('name', 'name', { unique:false });
+        }
+        if (!db.objectStoreNames.contains('sales')) {
+          const sales = db.createObjectStore('sales', { keyPath:'id', autoIncrement:true });
+          sales.createIndex('date', 'date', { unique:false });
+          sales.createIndex('productId', 'productId', { unique:false });
+        }
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath:'id' });
+        }
+        if (!db.objectStoreNames.contains('restocks')) {
+          const restocks = db.createObjectStore('restocks', { keyPath:'id', autoIncrement:true });
+          restocks.createIndex('productId', 'productId', { unique:false });
+          restocks.createIndex('date', 'date', { unique:false });
+        }
+        if (!db.objectStoreNames.contains('offlineQueue')) {
+          db.createObjectStore('offlineQueue', { keyPath:'id', autoIncrement:true });
+        }
+      };
+      request.onsuccess = (e) => { 
+        db = e.target.result; 
+        resolve(db);
+        setTimeout(checkOnlineStatus, 100);
+      };
+    });
+  }
+
+  // helpers
+  function tx(storeNames, mode='readonly'){
+    return db.transaction(storeNames, mode);
+  }
+  
+  function promisifyRequest(request){
+    return new Promise((resolve,reject)=>{
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ========== Utility ==========
+  function showNotification(message, type='success'){
+    const el = document.getElementById('notification');
+    el.textContent = message;
+    el.style.backgroundColor = type === 'error' ? 'var(--danger)' : 
+                              type === 'warning' ? 'var(--warning)' : 'var(--success)';
+    el.style.display = 'block';
+    setTimeout(()=> el.style.display='none', 3000);
+    
+    // Update last saved indicator
+    if (type === 'success') {
+      document.getElementById('last-saved').textContent = 'Last saved: ' + new Date().toLocaleTimeString();
+    }
+  }
+
+  function formatCurrency(n){
+    const v = Number(n) || 0;
+    return '₹' + v.toFixed(2);
+  }
+  
+  function validateNumberInput(input, errorElement, min = 0) {
+    const value = Number(input.value);
+    if (isNaN(value) || value < min) {
+      input.classList.add('input-error');
+      errorElement.style.display = 'block';
+      return false;
+    } else {
+      input.classList.remove('input-error');
+      errorElement.style.display = 'none';
+      return true;
+    }
+  }
+  
+  function validateRequiredInput(input, errorElement) {
+    if (!input.value.trim()) {
+      input.classList.add('input-error');
+      errorElement.style.display = 'block';
+      return false;
+    } else {
+      input.classList.remove('input-error');
+      errorElement.style.display = 'none';
+      return true;
+    }
+  }
+
+  // ========== Load / Display ==========
+  async function loadInitialData(){
+    await loadProducts();
+    await loadSales();
+    await loadLowStockAlerts();
+    computeDashboardMetrics();
+    loadOfflineQueue();
+  }
+
+  // PRODUCTS
+  async function loadProducts(){
+    showTabLoading('stock');
+    try {
+      const store = tx(['products']).objectStore('products');
+      const req = store.getAll();
+      const products = await promisifyRequest(req);
+      displayProducts(products);
+      window._productsCache = products;
+      updateStockValue(products);
+    } finally {
+      hideTabLoading('stock');
+    }
+  }
+
+  function displayProducts(products){
+    const table = document.getElementById('stock-table');
+    if (!table) 
+    
+    
+    return;
+    
+    table.innerHTML = '';
+    if (!products || products.length === 0){
+      table.innerHTML = '<tr><td colspan="6" style="text-align:center;">No products found</td></tr>';
+      return;
+    }
+    
+    // Display sequential numbers instead of actual IDs
+    products.forEach((p, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${p.name.toUpperCase()}</td>
+        <td>${p.quantity}</td>
+        <td>${formatCurrency(p.costPrice)}</td>
+        <td>${formatCurrency(p.mrp)}</td>
+        <td class="action-buttons">
+          <button class="btn btn-primary edit-product" data-id="${p.id}">Edit</button>
+          <button class="btn btn-warning restock-product" data-id="${p.id}">Restock</button>
+          <button class="btn btn-danger delete-product" data-id="${p.id}">Remove</button>
+        </td>
+      `;
+      table.appendChild(tr);
+    });
+
+    document.querySelectorAll('.edit-product').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = Number(e.currentTarget.dataset.id);
+        openEditProductModal(id);
+      });
+    });
+    
+    document.querySelectorAll('.restock-product').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = Number(e.currentTarget.dataset.id);
+        openRestockModal(id);
+      });
+    });
+    
+    document.querySelectorAll('.delete-product').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = Number(e.currentTarget.dataset.id);
+        deleteProduct(id);
+      });
+    });
+  }
+
+    async function addProduct(product){
+      try{
+        const store = tx(['products'],'readwrite').objectStore('products');
+        const req = store.add(product);
+        await promisifyRequest(req);
+        showNotification('Product added successfully');
+        await loadProducts();
+        await loadLowStockAlerts();
+      }catch(err){
+        console.error(err);
+        showNotification('Error adding product','error');
+      }
+    }
+
+    async function openEditRestockModal(restockId) {
+      try {
+        const store = tx(['restocks']).objectStore('restocks');
+        const restock = await promisifyRequest(store.get(restockId));
+        
+        if (!restock) {
+          showNotification('Restock record not found', 'error');
+          return;
+        }
+        
+        const product = await getProduct(restock.productId);
+        
+        // Populate the modal fields
+        document.getElementById('edit-restock-id').value = restock.id;
+        document.getElementById('edit-restock-product').value = product.name.toUpperCase();
+        document.getElementById('edit-restock-quantity').value = restock.quantityAdded;
+        document.getElementById('edit-restock-cost').value = restock.newCostPrice;
+        document.getElementById('edit-restock-mrp').value = restock.newMRP;
+        document.getElementById('edit-restock-previous').value = restock.previousQuantity;
+        
+        // Show the modal
+        document.getElementById('edit-restock-modal').style.display = 'flex';
+      } catch (err) {
+        console.error('Error opening edit restock modal:', err);
+        showNotification('Error opening edit form', 'error');
+      }
+    }
+
+    async function deleteRestock(restockId) {
+      if (!confirm('Are you sure you want to delete this restock record? This will revert the product quantity.')) return;
+      
+      try {
+        const store = tx(['restocks', 'products'], 'readwrite');
+        const restocksStore = store.objectStore('restocks');
+        const productsStore = store.objectStore('products');
+        
+        // Get the restock record
+        const restock = await promisifyRequest(restocksStore.get(restockId));
+        
+        if (!restock) {
+          showNotification('Restock record not found', 'error');
+          return;
+        }
+        
+        // Get the product and revert the quantity
+        const product = await promisifyRequest(productsStore.get(restock.productId));
+        product.quantity -= restock.quantityAdded;
+        
+        // Update the product
+        await promisifyRequest(productsStore.put(product));
+        
+        // Delete the restock record
+        await promisifyRequest(restocksStore.delete(restockId));
+        
+        showNotification('Restock record deleted successfully');
+        
+        // Reload data
+        await loadProducts();
+        await loadLowStockAlerts();
+        computeDashboardMetrics();
+        
+        // Reload restock history if we're on that tab
+        if (document.getElementById('restock-report').classList.contains('active')) {
+          loadRestockHistory();
+        }
+      } catch (err) {
+        console.error('Error deleting restock:', err);
+        showNotification('Error deleting restock record', 'error');
+      }
+    }
+
+    async function openEditProductModal(productId){
+      const store = tx(['products']).objectStore('products');
+      const product = await promisifyRequest(store.get(productId));
+      if (!product) { showNotification('Product not found','error'); return; }
+      document.getElementById('edit-product-id').value = product.id;
+      document.getElementById('edit-product-name').value = product.name;
+      document.getElementById('edit-product-quantity').value = product.quantity;
+      document.getElementById('edit-product-cost').value = product.costPrice;
+      document.getElementById('edit-product-mrp').value = product.mrp;
+      document.getElementById('edit-product-tax').value = product.tax || 0;
+      document.getElementById('edit-product-modal').style.display = 'flex';
+    }
+
+    async function updateProduct(product){
+      try{
+        const store = tx(['products'],'readwrite').objectStore('products');
+        const req = store.put(product);
+        await promisifyRequest(req);
+        showNotification('Product updated');
+        document.getElementById('edit-product-modal').style.display = 'none';
+        await loadProducts();
+        await loadLowStockAlerts();
+      }catch(err){ console.error(err); showNotification('Error updating product','error'); }
+    }
+
+    async function deleteProduct(productId){
+      if (!confirm('Are you sure you want to delete this product? This will not delete related sales.')) return;
+      try{
+        const store = tx(['products'],'readwrite').objectStore('products');
+        await promisifyRequest(store.delete(productId));
+        showNotification('Product deleted');
+        await loadProducts();
+        await loadLowStockAlerts();
+      }catch(err){ console.error(err); showNotification('Error deleting product','error'); }
+    }
+
+    // SALES
+    async function loadSales() {
+      showTabLoading('sales');
+      try {
+        const store = tx(['sales']).objectStore('sales');
+        const req = store.getAll();
+        const sales = await promisifyRequest(req);
+        window._salesCache = sales;
+        displayTodaySales(sales);
+        displayAllSales(sales);
+      } finally {
+        hideTabLoading('sales');
+      }
+    }
+
+    function displayTodaySales(sales) {
+      const tbody = document.getElementById('today-sales');
+      if (!tbody) {
+        console.error("Element with ID 'today-sales' not found");
+        return;
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      const todaySales = sales.filter(sale => sale.date.startsWith(today));
+
+      // Reverse the array to show latest sales first
+      todaySales.reverse();
+      
+      tbody.innerHTML = '';
+      if (todaySales.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No sales recorded today</td></tr>';
+        return;
+      }
+      
+      todaySales.forEach(sale => {
+        const product = window._productsCache.find(p => p.id === sale.productId);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${product ? product.name.toUpperCase() : 'Unknown Product'}</td> <!-- Product name in uppercase -->
+          <td>${sale.quantity}</td>
+          <td>${formatCurrency(sale.pricePerUnit)}</td>
+          <td>${formatCurrency(sale.quantity * sale.pricePerUnit)}</td>
+          <td>${new Date(sale.date).toLocaleTimeString()}</td>
+          <td class="action-buttons">
+            <button class="btn btn-primary edit-sale" data-id="${sale.id}">Edit</button>
+            <button class="btn btn-danger delete-sale" data-id="${sale.id}">Remove</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      
+      // Add event listeners for edit/delete buttons
+      document.querySelectorAll('.edit-sale').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = Number(e.currentTarget.dataset.id);
+          openEditSaleModal(id);
+        });
+      });
+      
+      document.querySelectorAll('.delete-sale').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = Number(e.currentTarget.dataset.id);
+          deleteSale(id);
+        });
+      });
+    }
+
+    function displayAllSales(sales) {
+      const tbody = document.getElementById('all-sales-history');
+      if (!tbody) {
+        console.error("Element with ID 'all-sales-history' not found");
+        return;
+      }
+      
+      tbody.innerHTML = '';
+      if (sales.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No sales yet</td></tr>';
+        return;
+      }
+      
+      // Sort sales by date (newest first)
+      sales.sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      sales.forEach(sale => {
+        const product = window._productsCache.find(p => p.id === sale.productId);
+        const profit = product ? (sale.pricePerUnit - product.costPrice) * sale.quantity : 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="checkbox" class="sale-checkbox" data-id="${sale.id}"></td>
+          <td>${new Date(sale.date).toLocaleDateString()}</td>
+          <td>${product ? product.name.toUpperCase() : 'Unknown Product'}</td> <!-- Product name in uppercase -->
+          <td>${sale.quantity}</td>
+          <td>${formatCurrency(sale.quantity * sale.pricePerUnit)}</td>
+          <td>${formatCurrency(profit)}</td>
+          <td class="action-buttons">
+            <button class="btn btn-primary edit-sale" data-id="${sale.id}">Edit</button>
+            <button class="btn btn-danger delete-sale" data-id="${sale.id}">Remove</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      
+      // Add event listeners for edit/delete buttons
+      document.querySelectorAll('.edit-sale').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = Number(e.currentTarget.dataset.id);
+          openEditSaleModal(id);
+        });
+      });
+      
+      document.querySelectorAll('.delete-sale').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = Number(e.currentTarget.dataset.id);
+          deleteSale(id);
+        });
+      });
+    }
+
+    // Current bill items array
+    let currentBillItems = [];
+
+    // Function to add item to current bill
+    function addItemToBill() {
+      const productId = document.getElementById('sale-product-id').value;
+      const quantity = document.getElementById('sale-quantity').value;
+      const price = document.getElementById('sale-price').value;
+      
+      if (!productId) {
+        showNotification('Please select a product', 'error');
+        return;
+      }
+      
+      if (!validateNumberInput(document.getElementById('sale-quantity'), document.getElementById('quantity-error'), 0.01) ||
+          !validateNumberInput(document.getElementById('sale-price'), document.getElementById('price-error'), 0.01)) {
+        return;
+      }
+      
+      const product = window._productsCache.find(p => p.id === Number(productId));
+      if (!product) {
+        showNotification('Product not found', 'error');
+        return;
+      }
+      
+      // Check if product already exists in bill
+      const existingItemIndex = currentBillItems.findIndex(item => item.productId === Number(productId));
+      
+      if (existingItemIndex !== -1) {
+        // Update existing item
+        currentBillItems[existingItemIndex].quantity += Number(quantity);
+        currentBillItems[existingItemIndex].total = currentBillItems[existingItemIndex].quantity * currentBillItems[existingItemIndex].pricePerUnit;
+      } else {
+        // Add new item
+        currentBillItems.push({
+          productId: Number(productId),
+          productName: product.name.toUpperCase(), // Product name in uppercase
+          quantity: Number(quantity),
+          pricePerUnit: Number(price),
+          total: Number(quantity) * Number(price)
+        });
+      }
+      
+      // Update bill display
+      updateBillDisplay();
+      
+      // Clear form
+      document.getElementById('product-search').value = '';
+      document.getElementById('sale-product-id').value = '';
+      document.getElementById('sale-quantity').value = '1';
+      document.getElementById('sale-price').value = '';
+      
+      showNotification('Item added to bill');
+    }
+
+    // Function to update bill display
+    function updateBillDisplay() {
+      const container = document.getElementById('bill-items-container');
+      const totalElement = document.getElementById('bill-total');
+      const billSection = document.getElementById('current-bill-items');
+      const generateBillBtn = document.getElementById('generate-bill-btn');
+      
+      container.innerHTML = '';
+      
+      if (currentBillItems.length === 0) {
+        billSection.style.display = 'none';
+        generateBillBtn.disabled = true;
+        return;
+      }
+      
+      billSection.style.display = 'block';
+      generateBillBtn.disabled = false;
+      
+      let total = 0;
+      
+      currentBillItems.forEach((item, index) => {
+        total += item.total;
+        
+        const itemElement = document.createElement('div');
+        itemElement.className = 'bill-item';
+        itemElement.innerHTML = `
+          <div class="bill-item-header">
+            <strong>${item.productName}</strong>
+            <button class="remove-item" data-index="${index}">&times;</button>
+          </div>
+          <div class="bill-item-content">
+            <div>Quantity: ${item.quantity}</div>
+            <div>Price: ${formatCurrency(item.pricePerUnit)}</div>
+            <div>Total: ${formatCurrency(item.total)}</div>
+          </div>
+        `;
+        
+        container.appendChild(itemElement);
+      });
+      
+      totalElement.textContent = `Total: ${formatCurrency(total)}`;
+      
+      // Add event listeners to remove buttons
+      document.querySelectorAll('.remove-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.dataset.index);
+          currentBillItems.splice(index, 1);
+          updateBillDisplay();
+        });
+      });
+    }
+
+    // Function to record sale from bill items
+    async function recordBillSale() {
+      if (currentBillItems.length === 0) {
+        showNotification('No items in bill', 'error');
+        return;
+      }
+      
+      // Get customer info
+      const customerInfo = {
+        name: document.getElementById('customer-name').value,
+        phone: document.getElementById('customer-phone').value,
+        address: document.getElementById('customer-address').value
+      };
+      
+      // // Check if offline
+      // if (!navigator.onLine) {
+      //   // Queue the sale for offline processing
+      //   await enqueueOffline({
+      //     type: 'recordBill',
+      //     items: currentBillItems,
+      //     customerInfo: customerInfo,
+      //     createdAt: new Date().toISOString()
+      //   });
+        
+      //   showNotification('Sale queued for offline sync', 'warning');
+        
+      //   // Reset form and bill
+      //   document.getElementById('sale-form').reset();
+      //   currentBillItems = [];
+      //   updateBillDisplay();
+      //   return;
+      // }
+      
+      try {
+        const store = tx(['sales', 'products'], 'readwrite');
+        const salesStore = store.objectStore('sales');
+        const productsStore = store.objectStore('products');
+        
+        // Process each item in the bill
+        for (const item of currentBillItems) {
+          // Get the product to update its quantity
+          const product = await promisifyRequest(productsStore.get(item.productId));
+          if (!product) {
+            showNotification(`Product not found: ${item.productName}`, 'error');
+            continue;
+          }
+          
+          // Check if there's enough stock
+          if (product.quantity < item.quantity) {
+            showNotification(`Not enough stock for ${product.name}. Only ${product.quantity} available.`, 'error');
+            continue;
+          }
+          
+          // Update product quantity
+          product.quantity -= item.quantity;
+          await promisifyRequest(productsStore.put(product));
+          
+          // Add the sale
+          const saleData = {
+            productId: item.productId,
+            quantity: item.quantity,
+            pricePerUnit: item.pricePerUnit,
+            date: new Date().toISOString(),
+            customerName: customerInfo.name,
+            customerPhone: customerInfo.phone,
+            customerAddress: customerInfo.address
+          };
+          
+          await promisifyRequest(salesStore.add(saleData));
+        }
+        
+        showNotification('Sale recorded successfully');
+        
+        // Generate and show bill
+        generateBillFromItems(currentBillItems, customerInfo);
+        
+        // Reset form and bill
+        document.getElementById('sale-form').reset();
+        currentBillItems = [];
+        updateBillDisplay();
+        
+        await loadSales();
+        await loadProducts();
+        await loadLowStockAlerts();
+        computeDashboardMetrics();
+      } catch (err) {
+        console.error(err);
+        showNotification('Error recording sale', 'error');
+      }
+    }
+
+    // ========== Handle Offline Bill Sync ==========
+    async function recordBillSaleFromOffline(action) {
+      try {
+        const store = tx(['sales', 'products'], 'readwrite');
+        const salesStore = store.objectStore('sales');
+        const productsStore = store.objectStore('products');
+
+        for (const item of action.items) {
+          const product = await promisifyRequest(productsStore.get(item.productId));
+          if (!product) continue;
+
+          if (product.quantity < item.quantity) continue;
+
+          product.quantity -= item.quantity;
+          await promisifyRequest(productsStore.put(product));
+
+          const saleData = {
+            productId: item.productId,
+            quantity: item.quantity,
+            pricePerUnit: item.pricePerUnit,
+            date: action.createdAt || new Date().toISOString(),
+            customerName: action.customerInfo.name,
+            customerPhone: action.customerInfo.phone,
+            customerAddress: action.customerInfo.address
+          };
+          await promisifyRequest(salesStore.add(saleData));
+        }
+
+        window._salesCache = (window._salesCache || []).filter(sale => !sale.temp);
+
+        await loadSales();
+        await loadProducts();
+        await loadLowStockAlerts();
+        computeDashboardMetrics();
+      } catch (err) {
+        console.error('Error syncing offline bill:', err);
+        throw err;
+      }
+    }
+
+    // Function to generate bill from items
+    function generateBillFromItems(items, customerInfo) {
+      const billContent = generateBillContent(items, customerInfo);
+      document.getElementById('bill-content').innerHTML = billContent;
+      document.getElementById('bill-modal').style.display = 'flex';
+    }
+
+    // Function to generate bill for existing sale
+    async function generateBillForExistingSale(saleId) {
+      try {
+        const store = tx(['sales']).objectStore('sales');
+        const sale = await promisifyRequest(store.get(saleId));
+        
+        if (!sale) {
+          showNotification('Sale not found', 'error');
+          return;
+        }
+        
+        const product = window._productsCache.find(p => p.id === sale.productId);
+        if (!product) {
+          showNotification('Product not found', 'error');
+          return;
+        }
+        
+        const customerInfo = {
+          name: sale.customerName || 'Walk-in Customer',
+          phone: sale.customerPhone || '',
+          address: sale.customerAddress || ''
+        };
+        
+        const billItem = [{
+          productId: sale.productId,
+          productName: product.name.toUpperCase(), // Product name in uppercase
+          quantity: sale.quantity,
+          pricePerUnit: sale.pricePerUnit,
+          total: sale.quantity * sale.pricePerUnit
+        }];
+        
+        generateBillFromItems(billItem, customerInfo);
+      } catch (err) {
+        console.error(err);
+        showNotification('Error generating bill', 'error');
+      }
+    }
+
+    // Function to generate bill for multiple selected sales
+    async function generateBillForSelectedSales(saleIds) {
+      try {
+        const store = tx(['sales']).objectStore('sales');
+        const sales = [];
+        
+        for (const id of saleIds) {
+          const sale = await promisifyRequest(store.get(id));
+          if (sale) {
+            sales.push(sale);
+          }
+        }
+        
+        if (sales.length === 0) {
+          showNotification('No sales selected', 'error');
+          return;
+        }
+        
+        // Group sales by customer (assuming same customer for all selected sales)
+        const customerInfo = {
+          name: sales[0].customerName || 'Walk-in Customer',
+          phone: sales[0].customerPhone || '',
+          address: sales[0].customerAddress || ''
+        };
+        
+        const billItems = [];
+        
+        for (const sale of sales) {
+          const product = window._productsCache.find(p => p.id === sale.productId);
+          if (product) {
+            billItems.push({
+              productId: sale.productId,
+              productName: product.name.toUpperCase(), // Product name in uppercase
+              quantity: sale.quantity,
+              pricePerUnit: sale.pricePerUnit,
+              total: sale.quantity * sale.pricePerUnit
+            });
+          }
+        }
+        
+        generateBillFromItems(billItems, customerInfo);
+      } catch (err) {
+        console.error(err);
+        showNotification('Error generating bill', 'error');
+      }
+    }
+
+    // Function to open modal for selecting multiple sales for bill
+    function openSelectSalesModal() {
+      const tbody = document.getElementById('select-sales-table');
+      tbody.innerHTML = '';
+      
+      if (!window._salesCache || window._salesCache.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No sales available</td></tr>';
+      } else {
+        window._salesCache.forEach(sale => {
+          const product = window._productsCache.find(p => p.id === sale.productId);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><input type="checkbox" class="select-sale-checkbox" data-id="${sale.id}"></td>
+            <td>${new Date(sale.date).toLocaleDateString()}</td>
+            <td>${product ? product.name.toUpperCase() : 'Unknown Product'}</td> <!-- Product name in uppercase -->
+            <td>${sale.quantity}</td>
+            <td>${formatCurrency(sale.quantity * sale.pricePerUnit)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+      
+      document.getElementById('select-sales-modal').style.display = 'flex';
+    }
+
+    async function openEditSaleModal(saleId) {
+      const store = tx(['sales']).objectStore('sales');
+      const sale = await promisifyRequest(store.get(saleId));
+      
+      if (!sale) {
+        showNotification('Sale not found', 'error');
+        return;
+      }
+      
+      const product = window._productsCache.find(p => p.id === sale.productId);
+      
+      document.getElementById('edit-sale-id').value = sale.id;
+      document.getElementById('edit-sale-product').value = product ? product.name.toUpperCase() : 'Unknown Product';
+      document.getElementById('edit-sale-quantity').value = sale.quantity;
+      document.getElementById('edit-sale-price').value = sale.pricePerUnit;
+      document.getElementById('edit-sale-modal').style.display = 'flex';
+    }
+
+    async function updateSale(updatedSale) {
+      try {
+        const store = tx(['sales', 'products'], 'readwrite');
+        const salesStore = store.objectStore('sales');
+        const productsStore = store.objectStore('products');
+        
+        // Get the original sale and product
+        const originalSale = await promisifyRequest(salesStore.get(updatedSale.id));
+        const product = await promisifyRequest(productsStore.get(originalSale.productId));
+        
+        // Calculate quantity difference
+        const quantityDiff = originalSale.quantity - updatedSale.quantity;
+        
+        // Update product quantity
+        product.quantity += quantityDiff;
+        await promisifyRequest(productsStore.put(product));
+        
+        // Update the sale
+        await promisifyRequest(salesStore.put(updatedSale));
+        
+        showNotification('Sale updated successfully');
+        document.getElementById('edit-sale-modal').style.display = 'none';
+        
+        await loadSales();
+        await loadProducts();
+        await loadLowStockAlerts();
+        computeDashboardMetrics();
+      } catch (err) {
+        console.error(err);
+        showNotification('Error updating sale', 'error');
+      }
+    }
+
+    async function deleteSale(saleId) {
+      if (!confirm('Are you sure you want to delete this sale?')) return;
+      
+      try {
+        const store = tx(['sales', 'products'], 'readwrite');
+        const salesStore = store.objectStore('sales');
+        const productsStore = store.objectStore('products');
+        
+        // Get the sale to restore product quantity
+        const sale = await promisifyRequest(salesStore.get(saleId));
+        if (!sale) {
+          showNotification('Sale not found', 'error');
+          return;
+        }
+        
+        // Get the product and restore quantity
+        const product = await promisifyRequest(productsStore.get(sale.productId));
+        if (product) {
+          product.quantity += sale.quantity;
+          await promisifyRequest(productsStore.put(product));
+        }
+        
+        // Delete the sale
+        await promisifyRequest(salesStore.delete(saleId));
+        
+        showNotification('Sale deleted successfully');
+        
+        await loadSales();
+        await loadProducts();
+        await loadLowStockAlerts();
+        computeDashboardMetrics();
+      } catch (err) {
+        console.error(err);
+        showNotification('Error deleting sale', 'error');
+      }
+    }
+
+    // ========== AUTCOMPLETE FUNCTIONALITY ==========
+    function setupProductSearchAutocomplete() {
+      const searchInput = document.getElementById('product-search');
+      const autocompleteList = document.getElementById('autocomplete-list');
+      const productIdInput = document.getElementById('sale-product-id');
+      const salePriceInput = document.getElementById('sale-price');
+      
+      if (!searchInput || !autocompleteList) {
+        console.error("Autocomplete elements not found");
+        return;
+      }
+      
+      searchInput.addEventListener('input', function() {
+        const value = this.value.trim().toLowerCase();
+        autocompleteList.innerHTML = '';
+        autocompleteList.style.display = 'none';
+        
+        if (value.length < 1) return;
+        
+        const matches = (window._productsCache || []).filter(product => 
+          product.name.toLowerCase().includes(value) && product.quantity > 0
+        );
+        
+        if (matches.length === 0) return;
+        
+        autocompleteList.style.display = 'block';
+        matches.forEach(product => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.textContent = `${product.name.toUpperCase()} (Stock: ${product.quantity})`; // Product name in uppercase
+          item.dataset.id = product.id;
+          item.dataset.mrp = product.mrp;
+          
+          item.addEventListener('click', function() {
+            searchInput.value = product.name.toUpperCase(); // Product name in uppercase
+            productIdInput.value = product.id;
+            salePriceInput.value = product.mrp;
+            autocompleteList.style.display = 'none';
+          });
+          
+          autocompleteList.appendChild(item);
+        });
+      });
+      
+      // Hide autocomplete when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-box')) {
+          autocompleteList.style.display = 'none';
+        }
+      });
+      
+      // Keyboard navigation
+      searchInput.addEventListener('keydown', function(e) {
+        const items = autocompleteList.querySelectorAll('.autocomplete-item');
+        if (items.length === 0) return;
+        
+        let activeItem = autocompleteList.querySelector('.autocomplete-active');
+        
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (!activeItem) {
+            items[0].classList.add('autocomplete-active');
+          } else {
+            activeItem.classList.remove('autocomplete-active');
+            if (activeItem.nextSibling) {
+              activeItem.nextSibling.classList.add('autocomplete-active');
+            } else {
+              items[0].classList.add('autocomplete-active');
+            }
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (!activeItem) {
+            items[items.length - 1].classList.add('autocomplete-active');
+            } else {
+            activeItem.classList.remove('autocomplete-active');
+            if (activeItem.previousSibling) {
+              activeItem.previousSibling.classList.add('autocomplete-active');
+            } else {
+              items[items.length - 1].classList.add('autocomplete-active');
+            }
+          }
+        } else if (e.key === 'Enter' && activeItem) {
+          e.preventDefault();
+          activeItem.click();
+        }
+      });
+    }
+
+    // ========== DASHBOARD METRICS ==========
+    function computeDashboardMetrics() {
+      // Today's metrics
+      if (!window._salesCache || !window._productsCache) {
+        console.log("Data not loaded yet");
+        return; 
+      }
+      const today = new Date().toISOString().split('T')[0];
+      const todaySales = window._salesCache ? window._salesCache.filter(sale => sale.date.startsWith(today)) : [];
+      
+      let todaySalesValue = 0;
+      let todayProfitValue = 0;
+      
+      todaySales.forEach(sale => {
+        const product = window._productsCache.find(p => p.id === sale.productId);
+        if (product) {
+          todaySalesValue += sale.quantity * sale.pricePerUnit;
+          todayProfitValue += (sale.pricePerUnit - product.costPrice) * sale.quantity;
+        }
+      });
+      
+      document.getElementById('today-sales-value').textContent = formatCurrency(todaySalesValue);
+      document.getElementById('today-profit-value').textContent = formatCurrency(todayProfitValue);
+      
+      // Monthly metrics (current month)
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      const monthlySales = window._salesCache ? window._salesCache.filter(sale => {
+        const saleDate = new Date(sale.date);
+        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+      }) : [];
+      
+      let monthlySalesValue = 0;
+      let monthlyProfitValue = 0;
+      
+      monthlySales.forEach(sale => {
+        const product = window._productsCache.find(p => p.id === sale.productId);
+        if (product) {
+          monthlySalesValue += sale.quantity * sale.pricePerUnit;
+          monthlyProfitValue += (sale.pricePerUnit - product.costPrice) * sale.quantity;
+        }
+      });
+      
+      document.getElementById('monthly-sales').textContent = formatCurrency(monthlySalesValue);
+      document.getElementById('monthly-profit').textContent = formatCurrency(monthlyProfitValue);
+      
+      // Running average (last 30 days)
+      // Running average (current month)
+      const now = new Date();
+
+      // Start of this month
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // End of this month
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); 
+      // (Day 0 of next month = last day of current month)
+
+      // Filter sales only in this month
+      const recentSales = window._salesCache ? window._salesCache.filter(sale => {
+        const saleDate = new Date(sale.date);
+        return saleDate >= monthStart && saleDate <= monthEnd;
+      }) : [];
+
+      // Calculate total sales value
+      let recentSalesValue = 0;
+      recentSales.forEach(sale => {
+        recentSalesValue += sale.quantity * sale.pricePerUnit;
+      });
+
+      // Count unique sale days (days when at least 1 sale happened)
+      const uniqueDates = new Set(recentSales.map(s => s.date.split('T')[0]));
+      const daysWithSales = Math.max(1, uniqueDates.size);
+
+      // Calculate daily average (only for days with sales)
+      const dailyAverage = recentSalesValue / daysWithSales;
+
+      // Show result
+      document.getElementById('running-average').textContent = formatCurrency(dailyAverage);
+    }
+
+    // NEW: Function to record restock
+    async function recordRestock(restockData) {
+      try {
+        const store = tx(['restocks', 'products'], 'readwrite');
+        const restocksStore = store.objectStore('restocks');
+        const productsStore = store.objectStore('products');
+        
+        // Add restock record
+        await promisifyRequest(restocksStore.add(restockData));
+        
+        // Update product
+        const product = await promisifyRequest(productsStore.get(restockData.productId));
+        product.quantity += restockData.quantityAdded;
+        product.costPrice = restockData.newCostPrice;
+        product.mrp = restockData.newMRP;
+        
+        await promisifyRequest(productsStore.put(product));
+        
+        showNotification('Product restocked successfully');
+        return true;
+      } catch (err) {
+        console.error('Error recording restock:', err);
+        showNotification('Error restocking product', 'error');
+        return false;
+      }
+    }
+
+    // NEW: Function to open restock modal
+    async function openRestockModal(productId) {
+      const store = tx(['products']).objectStore('products');
+      const product = await promisifyRequest(store.get(productId));
+      
+      if (!product) {
+        showNotification('Product not found', 'error');
+        return;
+      }
+      
+      document.getElementById('restock-product-id').value = product.id;
+      document.getElementById('restock-product-name').value = product.name.toUpperCase();
+      document.getElementById('restock-current-quantity').value = product.quantity;
+      document.getElementById('restock-quantity').value = 0;
+      document.getElementById('restock-cost').value = product.costPrice;
+      document.getElementById('restock-mrp').value = product.mrp;
+      
+      document.getElementById('restock-modal').style.display = 'flex';
+    }
+
+    // NEW: Function to load restock history
+    async function loadRestockHistory(fromDate = null, toDate = null) {
+      try {
+        const store = tx(['restocks']).objectStore('restocks');
+        let restocks = await promisifyRequest(store.getAll());
+        
+        // Filter by date if provided
+        if (fromDate && toDate) {
+          restocks = restocks.filter(restock => {
+            const restockDate = restock.date.split('T')[0];
+            return restockDate >= fromDate && restockDate <= toDate;
+          });
+        }
+        
+        // Sort by date (newest first)
+        restocks.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        displayRestockHistory(restocks);
+      } catch (err) {
+        console.error('Error loading restock history:', err);
+        showNotification('Error loading restock history', 'error');
+      }
+    }
+
+    // NEW: Function to display restock history
+    async function displayRestockHistory(restocks) {
+      const container = document.getElementById('restock-history');
+      container.innerHTML = '';
+
+      // Add event delegation for restock history buttons
+      document.getElementById('restock-history').addEventListener('click', function(e) {
+        // Handle edit button clicks
+        if (e.target.classList.contains('edit-restock')) {
+          const restockId = Number(e.target.dataset.id);
+          openEditRestockModal(restockId);
+        }
+        
+        // Handle delete button clicks
+        if (e.target.classList.contains('delete-restock')) {
+          const restockId = Number(e.target.dataset.id);
+          deleteRestock(restockId);
+        }
+      });
+            
+      if (!restocks || restocks.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#777;">No restock history found</div>';
+        return;
+      }
+      
+      for (const restock of restocks) {
+        const product = await getProduct(restock.productId);
+        
+        const restockItem = document.createElement('div');
+        restockItem.className = 'restock-item';
+        restockItem.innerHTML = `
+          <div class="restock-header">
+            <strong>${product ? product.name.toUpperCase() : 'Unknown Product'}</strong>
+            <span class="small">Date: ${new Date(restock.date).toLocaleDateString()}</span>
+          </div>
+          <div class="restock-details">
+            <div>Quantity Added: <strong>${restock.quantityAdded}</strong></div>
+            <div>Cost Price: <strong>${formatCurrency(restock.newCostPrice)}</strong></div>
+            <div>MRP: <strong>${formatCurrency(restock.newMRP)}</strong></div>
+            <div>Previous Stock: <strong>${restock.previousQuantity}</strong></div>
+            <!-- Add Actions buttons -->
+            <div class="restock-actions">
+              <button class="btn btn-primary edit-restock" data-id="${restock.id}">Edit</button>
+              <button class="btn btn-danger delete-restock" data-id="${restock.id}">Delete</button>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(restockItem);
+      }
+      // Add this after creating the restockItem element
+        const editBtn = restockItem.querySelector('.edit-restock');
+        const deleteBtn = restockItem.querySelector('.delete-restock');
+
+        editBtn.addEventListener('click', () => {
+          openEditRestockModal(restock.id);
+        });
+
+        deleteBtn.addEventListener('click', () => {
+          deleteRestock(restock.id);
+        });
+    }
+
+    // NEW: Helper function to get product
+    async function getProduct(productId) {
+      try {
+        const store = tx(['products']).objectStore('products');
+        return await promisifyRequest(store.get(productId));
+      } catch (err) {
+        console.error('Error getting product:', err);
+        return null;
+      }
+    }
+
+    // ========== LOW STOCK ALERTS ==========
+    async function loadLowStockAlerts() {
+      showTabLoading('dashboard');
+      try {
+        const products = window._productsCache || [];
+        const lowStockProducts = products.filter(product => product.quantity <= 5); // Threshold of 5 units
+        
+        const tbody = document.getElementById('low-stock-alerts');
+        if (!tbody) {
+          console.error("Element with ID 'low-stock-alerts' not found");
+          return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (lowStockProducts.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No low stock items</td></tr>';
+          return;
+        }
+        
+        lowStockProducts.forEach(product => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${product.name.toUpperCase()}</td>
+            <td>${product.quantity}</td>
+            <td>
+              <button class="btn btn-primary restock-product" data-id="${product.id}">Restock</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        
+        // Add event listeners to restock buttons
+        document.querySelectorAll('.restock-product').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const id = Number(e.currentTarget.dataset.id);
+            openRestockModal(id);
+          });
+        });
+        
+        // NEW: Setup search for low stock items
+        setupLowStockSearch();
+      } finally {
+        hideTabLoading('dashboard');
+      }
+    }
+
+    // NEW: Setup search for low stock items
+    function setupLowStockSearch() {
+      const searchInput = document.getElementById('low-stock-search');
+      if (!searchInput) return;
+      
+      searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#low-stock-alerts tr');
+        
+        // Skip the first row if it's a "no items" message
+        let hasResults = false;
+        
+        rows.forEach(row => {
+          if (row.cells.length < 2) return;
+          
+          const productName = row.cells[0].textContent.toLowerCase();
+          if (productName.includes(searchTerm)) {
+            row.style.display = '';
+            hasResults = true;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+        
+        // Show message if no results
+        if (!hasResults && rows.length > 0 && rows[0].cells[0].colSpan !== 3) {
+          const noResultsRow = document.createElement('tr');
+          noResultsRow.innerHTML = '<td colspan="3" style="text-align:center;">No matching products found</td>';
+          document.getElementById('low-stock-alerts').appendChild(noResultsRow);
+        }
+      });
+    }
+
+    // ========== STOCK VALUE ==========
+    function updateStockValue(products) {
+      let totalValue = 0;
+      products.forEach(product => {
+        totalValue += product.quantity * product.costPrice;
+      });
+      document.getElementById('total-stock-value').textContent = formatCurrency(totalValue);
+    }
+
+
+    // ========== BILL GENERATION ==========
+    function generateBillContent(items, customerInfo) {
+      const today = new Date();
+      const billNumber = 'RAJ-' + today.getFullYear() + '-' + 
+                        (today.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+                        Math.floor(1000 + Math.random() * 9000);
+      
+      let totalAmount = 0;
+      items.forEach(item => {
+        totalAmount += item.total;
+      });
+      
+      let itemsHTML = '';
+      items.forEach(item => {
+        itemsHTML += `
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.productName}</td>
+            <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">${item.quantity}</td>
+            <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">${formatCurrency(item.pricePerUnit)}</td>
+            <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">${formatCurrency(item.total)}</td>
+          </tr>
+        `;
+      });
+      
+      let billHTML = `
+        <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+          <h2 style="margin-bottom: 5px; color: var(--primary);">Raj Enterprise</h2>
+          <p style="margin: 0; color: #666;">Stock & Sales Management</p>
+          <h6 style="margin: 0; color: #666;">PH - 6386620244</h6>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+          <div>
+            <p style="margin: 5px 0;"><strong>Bill No:</strong> ${billNumber}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> ${today.toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Time:</strong> ${today.toLocaleTimeString()}</p>
+          </div>
+          <div>
+            <p style="margin: 5px 0;"><strong>Customer:</strong> ${customerInfo.name || 'Walk-in Customer'}</p>
+            ${customerInfo.phone ? `<p style="margin: 5px 0;"><strong>Phone:</strong> ${customerInfo.phone}</p>` : ''}
+          </div>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <thead>
+            <tr style="background: #f5f5f5;">
+              <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Product</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">Quantity</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">Price</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHTML}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="padding: 10px; text-align: right; border-top: 2px solid #ddd;"><strong>Grand Total:</strong></td>
+              <td style="padding: 10px; text-align: right; border-top: 2px solid #ddd;"><strong>${formatCurrency(totalAmount)}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+        
+        ${customerInfo.address ? `
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 5px 0;"><strong>Delivery Address:</strong></p>
+          <p style="margin: 5px 0; padding: 8px; background: #f9f9f9; border-radius: 4px;">${customerInfo.address}</p>
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 30px; text-align: center; color: #777;">
+          <p>Thank you for your business!</p>
+          <p>Raj Enterprise - Quality Products, Best Prices</p>
+        </div>
+      `;
+      
+      return billHTML;
+    }
+
+    function printBill() {
+      const billContent = document.getElementById('bill-content').innerHTML;
+      const originalContent = document.body.innerHTML;
+      
+      document.body.innerHTML = billContent;
+      window.print();
+      document.body.innerHTML = originalContent;
+      
+      // Reload the page to restore functionality
+      location.reload();
+    }
+
+    // Add this function to set up stock search autocomplete
+    function setupStockSearchAutocomplete() {
+      const searchInput = document.getElementById('stock-search');
+      const autocompleteList = document.createElement('div');
+      autocompleteList.className = 'autocomplete-items';
+      autocompleteList.id = 'autocomplete-list-stock';
+      autocompleteList.style.display = 'none';
+      searchInput.parentNode.appendChild(autocompleteList);
+
+      searchInput.addEventListener('input', function() {
+        const value = this.value.trim().toLowerCase();
+        autocompleteList.innerHTML = '';
+        autocompleteList.style.display = 'none';
+        
+        if (value.length < 1) return;
+        
+        const matches = (window._productsCache || []).filter(product => 
+          product.name.toLowerCase().includes(value)
+        );
+        
+        if (matches.length === 0) return;
+        
+        autocompleteList.style.display = 'block';
+        matches.forEach(product => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.textContent = `${product.name.toUpperCase()} (Stock: ${product.quantity})`;
+          item.dataset.id = product.id;
+          
+          item.addEventListener('click', function() {
+            searchInput.value = product.name.toUpperCase();
+            autocompleteList.style.display = 'none';
+            // Optional: Filter the stock table to show only this product
+            filterStockTable(product.id);
+          });
+          
+          autocompleteList.appendChild(item);
+        });
+      });
+      
+      // Hide autocomplete when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-box')) {
+          autocompleteList.style.display = 'none';
+        }
+      });
+    }
+
+    // Add this function to filter the stock table
+    function filterStockTable(productId = null) {
+      const table = document.getElementById('stock-table');
+      const rows = table.querySelectorAll('tr');
+      
+      rows.forEach(row => {
+        if (row.cells.length < 2) return; // Skip header/empty rows
+        
+        const rowProductId = row.querySelector('button.edit-product')?.dataset.id;
+        if (productId && rowProductId != productId) {
+          row.style.display = 'none';
+        } else {
+          row.style.display = '';
+        }
+      });
+    }
+
+    // ========== EVENT LISTENERS ==========
+      document.addEventListener('DOMContentLoaded', async function() {
+        // Initialize database
+        try {
+          await openDB();
+          await loadInitialData();
+          
+          // Setup autocomplete
+          setupProductSearchAutocomplete();
+          setupStockSearchAutocomplete();
+          
+          // Update current date
+          document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric'
+          }) + ' ▼';
+          
+          // Setup main tab switching
+          document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+              const target = this.dataset.target;
+              
+              // Update active tab
+              document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+              this.classList.add('active');
+              
+              // Update active content section
+              document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+              });
+              document.getElementById(target).classList.add('active');
+              
+              // Load data for the selected tab if needed
+              if (target === 'reports') {
+                // Set default date range for reports (current month)
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                
+                document.getElementById('report-from').value = firstDay.toISOString().split('T')[0];
+                document.getElementById('report-to').value = lastDay.toISOString().split('T')[0];
+                
+                // Also set dates for restock report
+                document.getElementById('restock-from').value = firstDay.toISOString().split('T')[0];
+                document.getElementById('restock-to').value = lastDay.toISOString().split('T')[0];
+                
+                // Load initial reports
+                generateReport();
+                loadRestockHistory();
+              }
+            });
+          });
+          
+          // Setup report tab switching
+          document.querySelectorAll('.report-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+              const target = this.dataset.target;
+              
+              // Update active report tab
+              document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+              this.classList.add('active');
+              
+              // Update active report content
+              document.querySelectorAll('.report-content').forEach(content => {
+                content.classList.remove('active');
+              });
+              document.getElementById(target).classList.add('active');
+              
+              // Load data if needed
+              if (target === 'restock-report') {
+                loadRestockHistory();
+              }
+            });
+          });
+
+          // Generate report button
+          document.getElementById('generate-report').addEventListener('click', function() {
+            generateReport();
+          });
+
+          // Generate restock report button
+          document.getElementById('generate-restock-report').addEventListener('click', function() {
+            const fromDate = document.getElementById('restock-from').value;
+            const toDate = document.getElementById('restock-to').value;
+            loadRestockHistory(fromDate, toDate);
+          });
+
+        // NEW: Restock form submission
+        document.getElementById('restock-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Validate form
+          if (!validateNumberInput(document.getElementById('restock-quantity'), document.getElementById('restock-quantity-error'), 1) ||
+              !validateNumberInput(document.getElementById('restock-cost'), document.getElementById('restock-cost-error'), 0.01) ||
+              !validateNumberInput(document.getElementById('restock-mrp'), document.getElementById('restock-mrp-error'), 0.01)) {
+            return;
+          }
+          
+          const productId = Number(document.getElementById('restock-product-id').value);
+          const quantityAdded = Number(document.getElementById('restock-quantity').value);
+          const newCostPrice = Number(document.getElementById('restock-cost').value);
+          const newMRP = Number(document.getElementById('restock-mrp').value);
+          const currentQuantity = Number(document.getElementById('restock-current-quantity').value);
+          
+          // Record restock
+          const success = await recordRestock({
+            productId: productId,
+            quantityAdded: quantityAdded,
+            previousQuantity: currentQuantity,
+            newCostPrice: newCostPrice,
+            newMRP: newMRP,
+            date: new Date().toISOString()
+          });
+          
+          if (success) {
+            document.getElementById('restock-modal').style.display = 'none';
+            await loadProducts();
+            await loadLowStockAlerts();
+            computeDashboardMetrics();
+          }
+        });
+
+        // NEW: Close restock modal
+        document.getElementById('close-restock').addEventListener('click', function() {
+          document.getElementById('restock-modal').style.display = 'none';
+        });
+
+        document.getElementById('close-edit-restock').addEventListener('click', function() {
+        document.getElementById('edit-restock-modal').style.display = 'none';
+      });
+        
+      } catch (err) {
+        console.error('Failed to initialize app:', err);
+        showNotification('Failed to initialize application', 'error');
+      }
+    });
+
+    // ========== RESTOCK HISTORY ==========
+      async function loadRestockHistory(fromDate = null, toDate = null) {
+        try {
+          const store = tx(['restocks']).objectStore('restocks');
+          let restocks = await promisifyRequest(store.getAll());
+          
+          // Filter by date if provided
+          if (fromDate && toDate) {
+            restocks = restocks.filter(restock => {
+              const restockDate = restock.date.split('T')[0];
+              return restockDate >= fromDate && restockDate <= toDate;
+            });
+          }
+          
+          // Sort by date (newest first)
+          restocks.sort((a, b) => new Date(b.date) - new Date(a.date));
+          
+          displayRestockHistory(restocks);
+        } catch (err) {
+          console.error('Error loading restock history:', err);
+          showNotification('Error loading restock history', 'error');
+        }
+      }
+
+      async function displayRestockHistory(restocks) {
+        const container = document.getElementById('restock-history');
+        container.innerHTML = '';
+        
+        if (!restocks || restocks.length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding:20px; color:#777;">No restock history found</div>';
+          return;
+        }
+        
+        for (const restock of restocks) {
+          const product = await getProduct(restock.productId);
+          
+          const restockItem = document.createElement('div');
+          restockItem.className = 'restock-item';
+          restockItem.innerHTML = `
+            <div class="restock-header">
+              <strong>${product ? product.name.toUpperCase() : 'Unknown Product'}</strong>
+              <span class="small">Date: ${new Date(restock.date).toLocaleDateString()}</span>
+            </div>
+            <div class="restock-details">
+              <div>Quantity Added: <strong>${restock.quantityAdded}</strong></div>
+              <div>Cost Price: <strong>${formatCurrency(restock.newCostPrice)}</strong></div>
+              <div>MRP: <strong>${formatCurrency(restock.newMRP)}</strong></div>
+              <div>Previous Stock: <strong>${restock.previousQuantity}</strong></div>
+              <div class="restock-actions">
+                <button class="btn btn-primary edit-restock" data-id="${restock.id}">Edit</button>
+                <button class="btn btn-danger delete-restock" data-id="${restock.id}">Delete</button>
+              </div>
+            </div>
+          `;
+          
+          container.appendChild(restockItem);
+          
+          // Add event listeners to the buttons
+          const editBtn = restockItem.querySelector('.edit-restock');
+          const deleteBtn = restockItem.querySelector('.delete-restock');
+          
+          editBtn.addEventListener('click', () => {
+            openEditRestockModal(restock.id);
+          });
+          
+          deleteBtn.addEventListener('click', () => {
+            deleteRestock(restock.id);
+          });
+        }
+      }
+
+    // === Offline Queue Helpers ===
+    function loadOfflineQueue() {
+      try { return JSON.parse(localStorage.getItem('offlineQueue') || '[]'); } 
+      catch { return []; }
+    }
+
+    function saveOfflineQueue() {
+      localStorage.setItem('offlineQueue', JSON.stringify(window.offlineQueue || []));
+    }
+
+    function enqueueOffline(action) {
+      window.offlineQueue = window.offlineQueue || [];
+      window.offlineQueue.push(action);
+      saveOfflineQueue();
+      updateSyncButton();
+    }
+
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Initialize database
+      try {
+        await openDB();
+        await loadInitialData();
+        
+        // Setup autocomplete
+        setupProductSearchAutocomplete();
+        setupStockSearchAutocomplete();
+        
+        // Update current date
+        document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric'
+        }) + ' ▼';
+        
+        // Setup tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+          tab.addEventListener('click', function() {
+            const target = this.dataset.target;
+            
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            window.offlineQueue = loadOfflineQueue();
+            updateSyncButton();
+
+            // Make sure this event listener exists
+            document.getElementById('generate-report').addEventListener('click', function() {
+                generateReport();
+            });
+            
+            // Update active content section
+            document.querySelectorAll('.content-section').forEach(section => {
+              section.classList.remove('active');
+            });
+            document.getElementById(target).classList.add('active');
+            window.offlineQueue = loadOfflineQueue();
+            updateSyncButton();
+            
+            // Load data for the selected tab if needed
+            if (target === 'reports') {
+              // Set default date range for reports (current month)
+              const today = new Date();
+              const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+              const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+              
+              document.getElementById('report-from').value = firstDay.toISOString().split('T')[0];
+              document.getElementById('report-to').value = lastDay.toISOString().split('T')[0];
+            }
+          });
+        });
+        
+        // Add to Bill button
+        document.getElementById('add-to-bill').addEventListener('click', addItemToBill);
+        
+        // Generate Bill button
+        document.getElementById('generate-bill-btn').addEventListener('click', function() {
+          if (currentBillItems.length === 0) {
+            showNotification('No items in bill', 'error');
+            return;
+          }
+          
+          // Get customer info
+          const customerInfo = {
+            name: document.getElementById('customer-name').value,
+            phone: document.getElementById('customer-phone').value,
+            address: document.getElementById('customer-address').value
+          };
+          
+          generateBillFromItems(currentBillItems, customerInfo);
+        });
+
+        // Load saved report filters when page loads
+        loadReportFilters();
+        // Generate report if filters are set
+        if (localStorage.getItem('lastReportFrom') && localStorage.getItem('lastReportTo')) {
+          generateReport();
+        }
+        
+        // Sale form submission
+        document.getElementById('sale-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          await recordBillSale();
+        });
+        
+        // Generate bill from existing sale
+        document.getElementById('generate-bill-from-sale').addEventListener('click', function() {
+          openSelectSalesModal();
+        });
+        
+        // Generate bill from selected sales
+        document.getElementById('generate-bill-from-selected').addEventListener('click', function() {
+          const selectedSales = [];
+          document.querySelectorAll('.select-sale-checkbox:checked').forEach(checkbox => {
+            selectedSales.push(parseInt(checkbox.dataset.id));
+          });
+          
+          if (selectedSales.length === 0) {
+            showNotification('Please select at least one sale', 'error');
+            return;
+          }
+          
+          generateBillForSelectedSales(selectedSales);
+          document.getElementById('select-sales-modal').style.display = 'none';
+        });
+        
+        // Product form submission
+        document.getElementById('product-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Validate form
+          if (!validateRequiredInput(document.getElementById('product-name'), document.getElementById('name-error')) ||
+              !validateNumberInput(document.getElementById('product-quantity'), document.getElementById('init-qty-error'), 0) ||
+              !validateNumberInput(document.getElementById('product-cost'), document.getElementById('cost-error'), 0) ||
+              !validateNumberInput(document.getElementById('product-mrp'), document.getElementById('mrp-error'), 0) ||
+              !validateNumberInput(document.getElementById('product-tax'), document.getElementById('tax-error'), 0)) {
+            return;
+          }
+          
+          // Add product
+          await addProduct({
+            name: document.getElementById('product-name').value,
+            quantity: Number(document.getElementById('product-quantity').value),
+            costPrice: Number(document.getElementById('product-cost').value),
+            mrp: Number(document.getElementById('product-mrp').value),
+            tax: Number(document.getElementById('product-tax').value)
+          });
+        });
+        
+        // Edit product form submission
+        document.getElementById('edit-product-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Validate form
+          if (!validateRequiredInput(document.getElementById('edit-product-name'), document.getElementById('edit-name-error')) ||
+              !validateNumberInput(document.getElementById('edit-product-quantity'), document.getElementById('edit-qty-error'), 0) ||
+              !validateNumberInput(document.getElementById('edit-product-cost'), document.getElementById('edit-cost-error'), 0) ||
+              !validateNumberInput(document.getElementById('edit-product-mrp'), document.getElementById('edit-mrp-error'), 0) ||
+              !validateNumberInput(document.getElementById('edit-product-tax'), document.getElementById('edit-tax-error'), 0)) {
+            return;
+          }
+          
+          // Update product
+          await updateProduct({
+            id: Number(document.getElementById('edit-product-id').value),
+            name: document.getElementById('edit-product-name').value,
+            quantity: Number(document.getElementById('edit-product-quantity').value),
+            costPrice: Number(document.getElementById('edit-product-cost').value),
+            mrp: Number(document.getElementById('edit-product-mrp').value),
+            tax: Number(document.getElementById('edit-product-tax').value)
+          });
+        });
+        
+        // Edit sale form submission
+        document.getElementById('edit-sale-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Validate form
+          if (!validateNumberInput(document.getElementById('edit-sale-quantity'), document.getElementById('edit-sale-qty-error'), 0.01) ||
+              !validateNumberInput(document.getElementById('edit-sale-price'), document.getElementById('edit-sale-price-error'), 0.01)) {
+            return;
+          }
+          
+          // Update sale
+          await updateSale({
+            id: Number(document.getElementById('edit-sale-id').value),
+            productId: window._salesCache.find(s => s.id === Number(document.getElementById('edit-sale-id').value)).productId,
+            quantity: Number(document.getElementById('edit-sale-quantity').value),
+            pricePerUnit: Number(document.getElementById('edit-sale-price').value),
+            date: window._salesCache.find(s => s.id === Number(document.getElementById('edit-sale-id').value)).date
+          });
+        });
+        
+        // Close modals
+        document.getElementById('close-edit-product').addEventListener('click', function() {
+          document.getElementById('edit-product-modal').style.display = 'none';
+        });
+        
+        document.getElementById('close-edit-sale').addEventListener('click', function() {
+          document.getElementById('edit-sale-modal').style.display = 'none';
+        });
+
+        // Close bill modal
+        document.getElementById('close-bill').addEventListener('click', function() {
+          document.getElementById('bill-modal').style.display = 'none';
+        });
+
+        // Close select sales modal
+        document.getElementById('close-select-sales').addEventListener('click', function() {
+          document.getElementById('select-sales-modal').style.display = 'none';
+        });
+
+        // Print bill button
+        document.getElementById('print-bill-btn').addEventListener('click', printBill);
+        
+        // Generate report
+        document.getElementById('generate-report').addEventListener('click', function() {
+          generateReport();
+        });
+        
+        // Check online status
+        checkOnlineStatus();
+        window.addEventListener('online', checkOnlineStatus);
+        window.addEventListener('offline', checkOnlineStatus);
+        
+      } catch (err) {
+        console.error('Failed to initialize app:', err);
+        showNotification('Failed to initialize application', 'error');
+      }
+    });
+    // === ADD THE NEW CODE RIGHT AFTER THESE EXISTING FORM LISTENERS ===
+
+        // Edit restock form submission
+        document.getElementById('edit-restock-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Validate form
+          if (!validateNumberInput(document.getElementById('edit-restock-quantity'), document.getElementById('edit-restock-quantity-error'), 1) ||
+              !validateNumberInput(document.getElementById('edit-restock-cost'), document.getElementById('edit-restock-cost-error'), 0.01) ||
+              !validateNumberInput(document.getElementById('edit-restock-mrp'), document.getElementById('edit-restock-mrp-error'), 0.01)) {
+            return;
+          }
+          
+          try {
+            const store = tx(['restocks', 'products'], 'readwrite');
+            const restocksStore = store.objectStore('restocks');
+            const productsStore = store.objectStore('products');
+            
+            const restockId = Number(document.getElementById('edit-restock-id').value);
+            const newQuantity = Number(document.getElementById('edit-restock-quantity').value);
+            const newCost = Number(document.getElementById('edit-restock-cost').value);
+            const newMRP = Number(document.getElementById('edit-restock-mrp').value);
+            
+            // Get the original restock record
+            const restock = await promisifyRequest(restocksStore.get(restockId));
+            
+            if (!restock) {
+              showNotification('Restock record not found', 'error');
+              return;
+            }
+            
+            // Get the product
+            const product = await promisifyRequest(productsStore.get(restock.productId));
+            
+            // Calculate the quantity difference
+            const quantityDiff = newQuantity - restock.quantityAdded;
+            
+            // Update product quantity
+            product.quantity += quantityDiff;
+            product.costPrice = newCost;
+            product.mrp = newMRP;
+            
+            await promisifyRequest(productsStore.put(product));
+            
+            // Update the restock record
+            restock.quantityAdded = newQuantity;
+            restock.newCostPrice = newCost;
+            restock.newMRP = newMRP;
+            
+            await promisifyRequest(restocksStore.put(restock));
+            
+            showNotification('Restock record updated successfully');
+            document.getElementById('edit-restock-modal').style.display = 'none';
+            
+            // Reload data
+            await loadProducts();
+            await loadLowStockAlerts();
+            computeDashboardMetrics();
+            
+            // Reload restock history if we're on that tab
+            if (document.getElementById('restock-report').classList.contains('active')) {
+              loadRestockHistory();
+            }
+          } catch (err) {
+            console.error('Error updating restock:', err);
+            showNotification('Error updating restock record', 'error');
+          }
+        });
+
+    // ========== ONLINE STATUS ==========
+    function checkOnlineStatus() {
+      const connectionEl = document.getElementById('connection');
+      const connText = document.getElementById('conn-text');
+      const offlineNotice = document.getElementById('offline-notice');
+      
+      if (navigator.onLine) {
+        connectionEl.classList.remove('offline');
+        connectionEl.classList.add('online');
+        connText.textContent = 'Online';
+        offlineNotice.style.display = 'none';
+        
+        // Try to sync data if we just came back online
+        if (window.offlineQueue && window.offlineQueue.length > 0) {
+          processOfflineQueue();
+        }
+      } else {
+        connectionEl.classList.remove('online');
+        connectionEl.classList.add('offline');
+        connText.textContent = 'Offline';
+        offlineNotice.style.display = 'block';
+        showNotification('Working offline. Changes will sync when online.', 'warning');
+      }
+      
+      updateSyncButton();
+    }
+
+    // ========== LOADING INDICATORS ==========
+    function showTabLoading(tabName) {
+      const loadingEl = document.getElementById(`${tabName}-loading`);
+      if (loadingEl) loadingEl.style.display = 'inline-block';
+    }
+    
+    function hideTabLoading(tabName) {
+      const loadingEl = document.getElementById(`${tabName}-loading`);
+      if (loadingEl) loadingEl.style.display = 'none';
+    }
+
+    // ========== REPORTS ==========
+      async function generateReport() {
+        const fromDate = document.getElementById('report-from').value;
+        const toDate = document.getElementById('report-to').value;
+        
+        if (!fromDate || !toDate) {
+          showNotification('Please select both from and to dates', 'error');
+          return;
+        }
+        
+        saveReportFilters(fromDate, toDate);
+        
+        try {
+          const store = tx(['sales']).objectStore('sales');
+          const allSales = await promisifyRequest(store.getAll());
+          
+          const filteredSales = allSales.filter(sale => {
+            const saleDate = sale.date.split('T')[0];
+            return saleDate >= fromDate && saleDate <= toDate;
+          });
+          
+          let totalSales = 0;
+          let totalProfit = 0;
+          let itemsSold = 0;
+          
+          const tbody = document.getElementById('sales-history');
+          tbody.innerHTML = '';
+          
+          if (filteredSales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No sales data available for the selected period</td></tr>';
+          } else {
+            for (const sale of filteredSales) {
+              const product = window._productsCache.find(p => p.id === sale.productId);
+              const saleTotal = sale.quantity * sale.pricePerUnit;
+              const profit = product ? (sale.pricePerUnit - product.costPrice) * sale.quantity : 0;
+              
+              totalSales += saleTotal;
+              totalProfit += profit;
+              itemsSold += sale.quantity;
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${new Date(sale.date).toLocaleDateString()}</td>
+                <td>${product ? product.name.toUpperCase() : 'Unknown Product'}</td>
+                <td>${sale.quantity}</td>
+                <td>${formatCurrency(saleTotal)}</td>
+                <td>${formatCurrency(profit)}</td>
+              `;
+              tbody.appendChild(tr);
+            }
+          }
+          
+          document.getElementById('report-total-sales').textContent = formatCurrency(totalSales);
+          document.getElementById('report-total-profit').textContent = formatCurrency(totalProfit);
+          document.getElementById('report-items-sold').textContent = itemsSold;
+          
+        } catch (err) {
+          console.error('Error generating report:', err);
+          showNotification('Error generating report', 'error');
+        }
+      }
+
+      // Save report filter parameters to localStorage
+      function saveReportFilters(fromDate, toDate) {
+        localStorage.setItem('lastReportFrom', fromDate);
+        localStorage.setItem('lastReportTo', toDate);
+      }
+
+      // Load report filter parameters from localStorage
+      function loadReportFilters() {
+        const fromDate = localStorage.getItem('lastReportFrom');
+        const toDate = localStorage.getItem('lastReportTo');
+        
+        if (fromDate && toDate) {
+          document.getElementById('report-from').value = fromDate;
+          document.getElementById('report-to').value = toDate;
+        }
+      }
+
+   // ========== BACKUP & RESTORE ==========
+    // Update backup to include restocks
+    document.getElementById('export-json').addEventListener('click', async function() {
+      try {
+        // Get all data from IndexedDB
+        const products = await promisifyRequest(tx(['products']).objectStore('products').getAll());
+        const sales = await promisifyRequest(tx(['sales']).objectStore('sales').getAll());
+        const settings = await promisifyRequest(tx(['settings']).objectStore('settings').getAll());
+        const restocks = await promisifyRequest(tx(['restocks']).objectStore('restocks').getAll()); // NEW
+        
+        const data = {
+          schemaVersion: 2, // Updated version
+          products,
+          sales,
+          settings,
+          restocks, // NEW
+          exportedAt: new Date().toISOString()
+        };
+        
+        // Create and download JSON file
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `raj-enterprise-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showNotification('Backup exported successfully');
+      } catch (err) {
+        console.error(err);
+        showNotification('Error exporting backup', 'error');
+      }
+    });
+
+    // Update restore to include restocks
+    document.getElementById('file-input').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          
+          if (!data.products || !data.sales) {
+            throw new Error('Invalid backup file format');
+          }
+          
+          // Import data into IndexedDB
+          const store = tx(['products', 'sales', 'settings', 'restocks'], 'readwrite'); // UPDATED
+          
+          // Clear existing data
+          await promisifyRequest(store.objectStore('products').clear());
+          await promisifyRequest(store.objectStore('sales').clear());
+          await promisifyRequest(store.objectStore('settings').clear());
+          if (data.restocks) { // NEW
+            await promisifyRequest(store.objectStore('restocks').clear());
+          }
+          
+          // Add imported data
+          for (const product of data.products) {
+            product.name = product.name || 'Unnamed';
+            product.quantity = Number(product.quantity || 0);
+            await promisifyRequest(store.objectStore('products').put(product));
+          }
+          
+          for (const sale of data.sales) {
+            sale.quantity = Number(sale.quantity || 0);
+            sale.pricePerUnit = Number(sale.pricePerUnit || 0);
+            await promisifyRequest(store.objectStore('sales').put(sale));
+          }
+          
+          if (data.settings) {
+            for (const setting of data.settings) {
+              await promisifyRequest(store.objectStore('settings').put(setting));
+            }
+          }
+          
+          // NEW: Import restocks if available
+          if (data.restocks) {
+            for (const restock of data.restocks) {
+              await promisifyRequest(store.objectStore('restocks').put(restock));
+            }
+          }
+          
+          showNotification('Backup imported successfully');
+          
+          // Reload all data
+          await loadInitialData();
+        } catch (err) {
+          console.error(err);
+          showNotification('Error importing backup', 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('clear-db').addEventListener('click', async function() {
+      if (!confirm('Are you sure you want to clear all data? This action cannot be undone.')) return;
+      
+      try {
+        const store = tx(['products', 'sales', 'settings'], 'readwrite');
+        
+        await promisifyRequest(store.objectStore('products').clear());
+        await promisifyRequest(store.objectStore('sales').clear());
+        await promisifyRequest(store.objectStore('settings').clear());
+        
+        showNotification('All data cleared successfully');
+        
+        // Reload all data
+        await loadInitialData();
+      } catch (err) {
+        console.error(err);
+        showNotification('Error clearing data', 'error');
+      }
+    });
+
+    // ========== PWA SERVICE WORKER ==========
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        // Only register service worker if served over HTTPS or localhost
+        if (window.location.hostname === 'localhost' || window.location.protocol === 'https:') {
+          navigator.serviceWorker.register('/sw.js').then(function(registration) {
+            console.log('SW registered: ', registration);
+          }).catch(function(registrationError) {
+            console.log('SW registration failed: ', registrationError);
+          });
+        }
+      });
+    }
+
+    // Check if app is running as PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('Running as standalone app!');
+      document.body.classList.add('standalone-app');
+    }
+
+    // Initialize offline queue
+    window.offlineQueue = [];
+
+    // Function to process queued actions when coming back online
+    async function processOfflineQueue() {
+      if (!window.offlineQueue || window.offlineQueue.length === 0) return;
+
+      const queue = [...window.offlineQueue];
+      for (const action of queue) {
+        try {
+          if (action.type === 'recordBill') {
+            await recordBillSaleFromOffline(action); 
+            // 👉 you need to write this function to save bill into IndexedDB
+          }
+          // remove from queue after success
+          window.offlineQueue.shift();
+          saveOfflineQueue();
+        } catch (err) {
+          console.error('Failed to sync', err);
+          break; // stop on error, retry later
+        }
+      }
+      updateSyncButton();
+      if(window.offlineQueue.length === 0) {
+        showNotification('Syncing offline changes...', 'warning');
+      }
+
+      for (const action of window.offlineQueue) {
+        
+        if (!navigator.onLine) {
+          enqueueOffline({
+            type: 'recordBill',
+            items: currentBillItems,      // your array of bill items
+            customer: customerInfo,       // your customer details if you have
+            createdAt: new Date().toISOString()
+          });
+          showNotification('Saved offline — will sync when online', 'warning');
+          return; // stop normal saving
+        }
+        else {
+          try {
+            await action();
+          } catch (error) {
+            console.error('Failed to sync action:', error);
+          }
+        }
+      }
+      
+      window.offlineQueue = [];
+      showNotification('All changes synced successfully!', 'success');
+    }
+
+    // Manual sync button
+    document.getElementById('manual-sync').addEventListener('click', function() {
+      if (navigator.onLine && window.offlineQueue.length > 0) {
+        processOfflineQueue();
+      }
+    });
+    window.addEventListener('online', processOfflineQueue);
+
+
+    // Show/hide sync button based on offline queue
+    function updateSyncButton() {
+      const syncButton = document.getElementById('manual-sync');
+      if (window.offlineQueue && window.offlineQueue.length > 0) {
+        syncButton.style.display = 'inline-block';
+        syncButton.innerHTML = `<i class="fas fa-sync"></i> Sync ${window.offlineQueue.length} Pending Changes`;
+      } else {
+        syncButton.style.display = 'none';
+      }
+    }
+  </script>
+
+
+  <!-- DEFINITIVE FIREBASE INTEGRATION - FIXES ALL SCOPE ISSUES -->
+  <script>
+    console.log('🚀 Loading Firebase integration...');
+
+    // Firebase Manager with fixed variable references
+    class FirebaseManager {
+      constructor() {
+        this.ready = false;
+        this.userRef = null;
+        this.syncActive = false;
+      }
+
+      async init() {
+        try {
+          console.log('📡 Initializing Firebase manager...');
+
+          // FIXED: Use window.firebaseAuth (globally defined)
+          if (!window.firebaseAuth) {
+            throw new Error('firebaseAuth not available - check Firebase initialization');
+          }
+
+          // Set up auth state listener
+          window.firebaseAuth.onAuthStateChanged(async (user) => {
+            window.currentUser = user;
+            this.updateUI(user);
+
+            if (user) {
+              console.log('✅ User signed in:', user.email);
+              this.userRef = window.firebaseDb.collection('users').doc(user.uid);
+              this.syncActive = true;
+              await this.startSync();
+              await this.uploadLocalData();
+              this.showStatus('🎉 Signed in and syncing!', 'success');
+            } else {
+              console.log('👋 User signed out');
+              this.syncActive = false;
+              this.stopSync();
+              this.userRef = null;
+            }
+          });
+
+          this.ready = true;
+          console.log('🚀 Firebase manager ready');
+
+        } catch (error) {
+          console.error('❌ Firebase manager init error:', error);
+          this.showStatus('Init error: ' + error.message, 'error');
+        }
+      }
+
+      updateUI(user) {
+        const signinBtn = document.getElementById('fb-signin');
+        const signoutBtn = document.getElementById('fb-signout');
+        const userSpan = document.getElementById('fb-user');
+
+        if (user) {
+          if (signinBtn) signinBtn.style.display = 'none';
+          if (signoutBtn) signoutBtn.style.display = 'inline-block';
+          if (userSpan) {
+            userSpan.textContent = user.email.split('@')[0];
+            userSpan.title = user.email;
+          }
+        } else {
+          if (signinBtn) signinBtn.style.display = 'inline-block';
+          if (signoutBtn) signoutBtn.style.display = 'none';
+          if (userSpan) userSpan.textContent = '';
+        }
+      }
+
+      async startSync() {
+        if (!this.userRef || !this.syncActive) return;
+
+        try {
+          this.stopSync();
+          console.log('🔄 Starting real-time sync...');
+
+          // Products sync
+          const productsUnsub = this.userRef.collection('products').onSnapshot(
+            (snapshot) => this.handleSync('products', snapshot),
+            (error) => console.error('Products sync error:', error)
+          );
+
+          // Sales sync
+          const salesUnsub = this.userRef.collection('sales').onSnapshot(
+            (snapshot) => this.handleSync('sales', snapshot),
+            (error) => console.error('Sales sync error:', error)
+          );
+
+          window.unsubscribes = [productsUnsub, salesUnsub];
+          console.log('✅ Real-time sync active');
+
+        } catch (error) {
+          console.error('Sync setup error:', error);
+        }
+      }
+
+      async handleSync(collection, snapshot) {
+        if (snapshot.metadata.hasPendingWrites) return;
+
+        try {
+          let changes = 0;
+
+          for (const change of snapshot.docChanges()) {
+            if (change.type === 'added' || change.type === 'modified') {
+              const data = { id: change.doc.id, ...change.doc.data() };
+              await this.updateLocal(collection, data);
+              changes++;
+            }
+          }
+
+          if (changes > 0) {
+            console.log(`📥 Synced ${changes} ${collection} items`);
+            this.refreshUI(collection);
+          }
+
+        } catch (error) {
+          console.error(`Sync error for ${collection}:`, error);
+        }
+      }
+
+      async updateLocal(storeName, item) {
+        try {
+          if (typeof window.db !== 'undefined' && window.db) {
+            const transaction = window.db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            await store.put(item);
+          }
+        } catch (error) {
+          console.error('Local update error:', error);
+        }
+      }
+
+      refreshUI(collection) {
+        try {
+          if (collection === 'products' && typeof window.loadProducts === 'function') {
+            window.loadProducts();
+          }
+          if (collection === 'sales') {
+            if (typeof window.loadSales === 'function') window.loadSales();
+            if (typeof window.loadTodaySales === 'function') window.loadTodaySales();
+          }
+        } catch (error) {
+          console.error('UI refresh error:', error);
+        }
+      }
+
+      async uploadLocalData() {
+        if (!this.syncActive || !this.userRef) return;
+
+        try {
+          console.log('📤 Uploading local data...');
+
+          // Upload products
+          if (typeof window.getAllData === 'function') {
+            const products = await window.getAllData('products');
+            for (const product of products) {
+              await this.userRef.collection('products').doc(product.id).set({
+                ...product,
+                lastModified: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            }
+            if (products.length > 0) {
+              console.log(`✅ Uploaded ${products.length} products`);
+            }
+          }
+
+          // Upload sales
+          if (typeof window.getAllData === 'function') {
+            const sales = await window.getAllData('sales');
+            for (const sale of sales) {
+              await this.userRef.collection('sales').doc(sale.id).set({
+                ...sale,
+                lastModified: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            }
+            if (sales.length > 0) {
+              console.log(`✅ Uploaded ${sales.length} sales`);
+            }
+          }
+
+        } catch (error) {
+          console.error('Upload error:', error);
+        }
+      }
+
+      async syncItem(collection, item) {
+        if (!this.syncActive || !this.userRef || !item) return;
+
+        try {
+          await this.userRef.collection(collection).doc(item.id).set({
+            ...item,
+            lastModified: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          console.log(`📤 Synced ${collection}:`, item.id);
+        } catch (error) {
+          console.error(`Item sync error:`, error);
+        }
+      }
+
+      stopSync() {
+        if (window.unsubscribes) {
+          window.unsubscribes.forEach(unsub => unsub());
+          window.unsubscribes = [];
+        }
+      }
+
+      async signIn(email, password) {
+        try {
+          this.showStatus('🔐 Signing in...', 'info');
+          await window.firebaseAuth.signInWithEmailAndPassword(email, password);
+          this.closeModal();
+        } catch (error) {
+          this.showStatus('❌ Sign in failed: ' + error.message, 'error');
+        }
+      }
+
+      async signUp(email, password) {
+        try {
+          this.showStatus('✨ Creating account...', 'info');
+          await window.firebaseAuth.createUserWithEmailAndPassword(email, password);
+          this.closeModal();
+        } catch (error) {
+          this.showStatus('❌ Sign up failed: ' + error.message, 'error');
+        }
+      }
+
+      async signOut() {
+        try {
+          await window.firebaseAuth.signOut();
+          this.showStatus('👋 Signed out', 'success');
+        } catch (error) {
+          console.error('Sign out error:', error);
+        }
+      }
+
+      showStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('firebase-status');
+        if (statusDiv) {
+          statusDiv.textContent = message;
+          statusDiv.className = `firebase-status ${type}`;
+          statusDiv.style.display = 'block';
+
+          if (type === 'success') {
+            setTimeout(() => statusDiv.style.display = 'none', 2500);
+          }
+        }
+        console.log(`Firebase [${type.toUpperCase()}]:`, message);
+      }
+
+      openModal() {
+        const modal = document.getElementById('firebase-modal');
+        if (modal) {
+          modal.classList.add('active');
+          this.showStatus('Enter your email and password', 'info');
+        }
+      }
+
+      closeModal() {
+        const modal = document.getElementById('firebase-modal');
+        if (modal) {
+          modal.classList.remove('active');
+          document.getElementById('fb-email').value = '';
+          document.getElementById('fb-password').value = '';
+          document.getElementById('firebase-status').style.display = 'none';
+        }
+      }
+    }
+
+    // Create global Firebase manager
+    window.fbManager = new FirebaseManager();
+
+    // Enhanced database functions
+    const origAddProduct = window.addProduct;
+    if (origAddProduct) {
+      window.addProduct = async function(product) {
+        try {
+          const result = await origAddProduct(product);
+          if (result && window.fbManager.syncActive) {
+            await window.fbManager.syncItem('products', result);
+          }
+          return result;
+        } catch (error) {
+          console.error('Enhanced addProduct error:', error);
+          return origAddProduct(product);
+        }
+      };
+    }
+
+    const origRecordSale = window.recordSale;
+    if (origRecordSale) {
+      window.recordSale = async function(sale) {
+        try {
+          const result = await origRecordSale(sale);
+          if (result && window.fbManager.syncActive) {
+            await window.fbManager.syncItem('sales', result);
+          }
+          return result;
+        } catch (error) {
+          console.error('Enhanced recordSale error:', error);
+          return origRecordSale(sale);
+        }
+      };
+    }
+
+    // Global UI functions
+    window.toggleFirebaseModal = (show) => {
+      if (show) {
+        window.fbManager.openModal();
+      } else {
+        window.fbManager.closeModal();
+      }
+    };
+
+    window.signUpUser = () => {
+      const email = document.getElementById('fb-email').value;
+      const password = document.getElementById('fb-password').value;
+      if (email && password) {
+        window.fbManager.signUp(email, password);
+      } else {
+        window.fbManager.showStatus('❌ Enter email and password', 'error');
+      }
+    };
+
+    window.signOutUser = () => {
+      window.fbManager.signOut();
+    };
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('📱 Page loaded, setting up Firebase...');
+
+      // Initialize Firebase manager after delay
+      setTimeout(() => {
+        window.fbManager.init();
+      }, 1000);
+
+      // Form handler
+      const form = document.getElementById('firebase-form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const email = document.getElementById('fb-email').value;
+          const password = document.getElementById('fb-password').value;
+          window.fbManager.signIn(email, password);
+        });
+      }
+
+      // Modal outside click
+      const modal = document.getElementById('firebase-modal');
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            window.fbManager.closeModal();
+          }
+        });
+      }
+
+      // Connection monitoring
+      const updateConnection = () => {
+        const text = document.getElementById('conn-text');
+        const element = document.getElementById('connection');
+
+        if (navigator.onLine) {
+          if (text) text.textContent = '🟢 Online';
+          if (element) element.className = 'connection-status online';
+        } else {
+          if (text) text.textContent = '🔴 Offline';
+          if (element) element.className = 'connection-status offline';
+        }
+      };
+
+      window.addEventListener('online', updateConnection);
+      window.addEventListener('offline', updateConnection);
+      updateConnection();
+
+      // Date update
+      const updateDate = () => {
+        const dateEl = document.getElementById('header-date');
+        if (dateEl) {
+          dateEl.textContent = new Date().toLocaleDateString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric'
+          });
+        }
+      };
+      updateDate();
+      setInterval(updateDate, 60000);
+
+      console.log('✅ All Firebase setup complete');
+    });
+
+    console.log('🎯 Firebase integration loaded successfully');
+  </script>
+
+</body>
+</html>
